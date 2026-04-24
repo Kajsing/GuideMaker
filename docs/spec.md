@@ -57,4 +57,4 @@ MVP must not send guide content, screenshots, logs, analytics, crash reports, or
 
 ## Source Package
 
-The original research and planning package is kept in `windows_guide_tool_codex_package.md` as historical context.
+The original research and planning package is kept in `archive/windows_guide_tool_codex_package.md` as historical context.

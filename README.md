@@ -21,7 +21,7 @@ GuideMaker is a local-first Windows desktop tool for creating technical guides w
 - `scripts` - validation and test entry points.
 - `docs` - current project specification, decisions, architecture, plan, implementation notes, and status.
 
-The original research package is kept in `windows_guide_tool_codex_package.md` as historical context. Use `docs/` for current working documentation.
+The original research package is kept in `archive/windows_guide_tool_codex_package.md` as historical context. Use `docs/` for current working documentation.
 
 ## Validation
 

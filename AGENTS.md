@@ -19,7 +19,7 @@ Before product changes, read:
 7. `docs/status.md`
 8. This `AGENTS.md`
 
-`windows_guide_tool_codex_package.md` is historical/research context. Use `docs/` as the current working documentation.
+`archive/windows_guide_tool_codex_package.md` is historical/research context. Use `docs/` as the current working documentation.
 
 ## Current Stack
 

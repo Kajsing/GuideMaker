@@ -21,6 +21,7 @@ Status: Initial repo skeleton created; full build/test validation awaits .NET 8 
 | 2026-04-25 | Initial solution skeleton created | Starts Milestone 1 with buildable project boundaries | App/Core/Storage/Export/Tests/Scripts/Samples are in place |
 | 2026-04-25 | Root `AGENTS.md` added | Gives Codex stable repo-local instructions | Future sessions have concise scope, architecture, and validation guidance |
 | 2026-04-25 | Docs split into `docs/` | Makes project guidance easier to maintain | Large package remains as historical context |
+| 2026-04-25 | Original research package moved to `archive/` | Keeps repo root focused on active project files | `docs/` remains the source of current guidance |
 
 ## Open Blockers
 
@@ -53,6 +54,7 @@ Status: Initial repo skeleton created; full build/test validation awaits .NET 8 
 | 2026-04-25 | `git diff --check` | Pass | After adding `AGENTS.md` and updating repo structure |
 | 2026-04-25 | `git diff --check` | Pass | After splitting current docs into `docs/` |
 | 2026-04-25 | docs blocker scan | Pass | No unresolved blocker markers found in `docs/*.md` |
+| 2026-04-25 | `git diff --check` | Pass | After moving research package to `archive/` |
 
 ## Known Risks
 
