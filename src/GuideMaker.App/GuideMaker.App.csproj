@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>GuideMaker.App</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\GuideMaker.Core\GuideMaker.Core.csproj" />
+    <ProjectReference Include="..\GuideMaker.Export\GuideMaker.Export.csproj" />
+    <ProjectReference Include="..\GuideMaker.Storage\GuideMaker.Storage.csproj" />
+  </ItemGroup>
+</Project>

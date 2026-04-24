@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\GuideMaker.Core\GuideMaker.Core.csproj" />
+  </ItemGroup>
+</Project>

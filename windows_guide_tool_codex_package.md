@@ -1,12 +1,14 @@
 # Windows 11 Guide Tool — Codex-klar research- og designpakke
 
+> Historical source package. Current working docs now live in `docs/`.
+
 ## 0. Executive summary
 
 Projektet er et Windows 11-værktøj til at lave, redigere, organisere og eksportere guides. En guide forstås her som en trinvis vejledning med tekst, billeder/skærmbilleder, markeringer, noter, metadata og eventuelt eksport til formater som Markdown, HTML eller PDF.
 
 Målet er at bygge et praktisk desktopværktøj, der gør det nemt at dokumentere arbejdsgange, fejlretning, supportprocedurer eller interne how-to-guides. Projektet bør starte som en lokal-first MVP uden cloud-afhængighed, så det kan bygges, testes og bruges hurtigt på Windows 11.
 
-Den vigtigste åbne beslutning er scope: Skal værktøjet primært være en guide-editor, et screenshot-/annotation-værktøj, en vidensbase, eller en eksportpipeline? Før implementering skal projektet afklare kerneflowet: “opret guide → tilføj trin → indsæt skærmbilleder → annotér → preview → eksportér”.
+MVP-scope er besluttet som et lokalt Windows desktopværktøj til at lave en guide end to end: opret guide, optag/følg workflow med screenshots under udførelse, annotér, preview, og eksportér til Markdown, HTML og PDF.
 
 ### Fakta
 
@@ -24,7 +26,7 @@ Den vigtigste åbne beslutning er scope: Skal værktøjet primært være en guid
 
 ### Åbne spørgsmål
 
-De åbne spørgsmål er samlet i `docs/questions.md`. Implementering bør ikke starte, før spørgsmål markeret som `BLOCKER` er afklaret.
+Beslutninger og tidligere åbne spørgsmål er samlet i `docs/questions.md`. Implementering kan starte, når alle spørgsmål markeret som `BLOCKER` står som `DECIDED`.
 
 ---
 
@@ -296,51 +298,40 @@ MVP leveres som lokal dev-build først og senere som portable zip eller installe
 # 2. Foreslået repo-struktur
 
 ```text
-windows-guide-tool/
+GuideMaker/
   AGENTS.md
   README.md
-  docs/
-    spec.md
-    questions.md
-    architecture.md
-    plan.md
-    implement.md
-    status.md
-  skills/
-    codex-docpack-from-software-idea/
-      SKILL.md
+  GuideMaker.sln
+  Directory.Build.props
+  windows_guide_tool_codex_package.md
   src/
-    app/
-    core/
-    export/
-    storage/
-    ui/
+    GuideMaker.App/
+    GuideMaker.Core/
+    GuideMaker.Export/
+    GuideMaker.Storage/
   tests/
-    unit/
-    integration/
-    fixtures/
-      sample-guide/
+    GuideMaker.Tests/
+  samples/
+    starter-guide/
+      guide.json
+      assets/
+      exports/
   scripts/
     validate.ps1
     test.ps1
-    package.ps1
   .gitignore
 ```
 
-Hvis projektet senere vælger en specifik stack, kan `src/` tilpasses. Eksempler:
+Projektets dokumentpakke ligger indtil videre samlet i `windows_guide_tool_codex_package.md`. Den kan senere splittes ud, hvis det bliver nyttigt:
 
 ```text
-src/GuideTool.App/          # C#/.NET/WPF eller WinUI
-src/GuideTool.Core/
-src/GuideTool.Tests/
-```
-
-eller:
-
-```text
-src/app/                    # Electron/Tauri frontend
-src/core/
-src-tauri/                  # Hvis Tauri vælges
+docs/
+  spec.md
+  questions.md
+  architecture.md
+  plan.md
+  implement.md
+  status.md
 ```
 
 ---
@@ -530,24 +521,24 @@ MVP is done when a user can create, save, reopen, preview, and export a guide wi
 
 ### Q-001 — What is the MVP success criterion?
 
-Status: BLOCKER  
+Status: DECIDED
 Default assumption: A user can create, save, reopen, preview, and export a guide to Markdown.
 
 Decision:
 
 ```text
-TBD
+MVP is successful when a user can create a complete guide end to end in the program, including a follow-along screenshot capture mode while the user performs the workflow being documented.
 ```
 
 ### Q-002 — Who is the first user?
 
-Status: BLOCKER  
+Status: DECIDED
 Default assumption: Single local author.
 
 Decision:
 
 ```text
-TBD
+The first user is an author creating technical application guides for Region Midt. The app is optimized for one local author producing internal technical guides.
 ```
 
 ### Q-003 — Is this personal, internal work tool, or commercial product?
@@ -565,13 +556,13 @@ TBD
 
 ### Q-004 — Does MVP need login?
 
-Status: BLOCKER  
+Status: DECIDED
 Default assumption: No.
 
 Decision:
 
 ```text
-TBD
+No login in MVP. The app runs locally on the user's Windows machine.
 ```
 
 ### Q-005 — Does MVP need multiple roles?
@@ -589,48 +580,48 @@ TBD
 
 ### Q-006 — Is screenshot capture part of MVP?
 
-Status: BLOCKER  
+Status: DECIDED
 Default assumption: No direct capture in MVP; image import and clipboard paste only.
 
 Decision:
 
 ```text
-TBD
+Yes. MVP includes follow-along screenshot capture while the user performs actions for the guide. Manual image import and clipboard paste may still be useful, but automatic/local screenshot capture is part of the MVP.
 ```
 
 ### Q-007 — Is annotation part of MVP?
 
-Status: BLOCKER  
+Status: DECIDED
 Default assumption: Not advanced annotation. Captions and alt text only.
 
 Decision:
 
 ```text
-TBD
+Yes, basic annotation is part of MVP. The initial scope should support practical guide annotations such as arrows, rectangles/highlights, step labels, captions, and optional blur/redaction for sensitive areas. Advanced image editing is outside MVP.
 ```
 
 ### Q-008 — What is the first export format?
 
-Status: BLOCKER  
+Status: DECIDED
 Default assumption: Markdown.
 
 Decision:
 
 ```text
-TBD
+MVP exports to Markdown, HTML, and PDF. Video with audio is explicitly deferred to version 2.
 ```
 
 ## 4. Data and integrations
 
 ### Q-009 — What is source of truth?
 
-Status: BLOCKER  
+Status: DECIDED
 Default assumption: `guide.json`.
 
 Decision:
 
 ```text
-TBD
+Each guide is saved as a project folder containing the guide data file, images/screenshots, and exported outputs. The source of truth should be a structured project file, preferably `guide.json`, inside the project folder.
 ```
 
 ### Q-010 — Should project files be Git-friendly?
@@ -646,20 +637,20 @@ TBD
 
 ### Q-011 — Does MVP integrate with Confluence, SharePoint, ServiceNow, GitHub, or Gitea?
 
-Status: BLOCKER  
+Status: DECIDED
 Default assumption: No integrations in MVP.
 
 Decision:
 
 ```text
-TBD
+No integrations in MVP. Confluence, SharePoint, ServiceNow, GitHub, Gitea, and other publishing integrations are deferred to version 2 or later.
 ```
 
 ## 5. UI/UX
 
 ### Q-012 — Which UI stack should be used?
 
-Status: BLOCKER  
+Status: DECIDED
 Options:
 
 - C#/.NET + WPF
@@ -673,7 +664,7 @@ Default assumption: C#/.NET desktop stack unless there is a strong reason to use
 Decision:
 
 ```text
-TBD
+C#/.NET with WPF. Rationale: local Windows desktop app, no paid third-party runtime, mature screenshot/file/PDF workflow options, and good fit for a Region Midt Windows environment. Prefer free/open-source NuGet packages only where needed.
 ```
 
 ### Q-013 — Should dark mode be included in MVP?
@@ -702,35 +693,35 @@ TBD
 
 ### Q-015 — Can guide content contain sensitive data?
 
-Status: BLOCKER  
+Status: DECIDED
 Default assumption: Yes, screenshots may contain sensitive/internal data.
 
 Decision:
 
 ```text
-TBD
+Guide content may contain sensitive or internal data; the user is responsible for content. The app should show a general warning before export reminding the user to review screenshots/text for sensitive information, and MVP should include basic redaction/blur if feasible.
 ```
 
 ### Q-016 — Is cloud usage allowed?
 
-Status: BLOCKER  
+Status: DECIDED
 Default assumption: No cloud in MVP.
 
 Decision:
 
 ```text
-TBD
+Cloud usage is not allowed in MVP. All guide content, screenshots, project files, preview, and export must work locally.
 ```
 
 ### Q-017 — Is telemetry allowed?
 
-Status: BLOCKER  
+Status: DECIDED
 Default assumption: No telemetry in MVP.
 
 Decision:
 
 ```text
-TBD
+No telemetry in MVP. The app must not send usage data, screenshots, guide content, crash reports, analytics, or diagnostics to external services. Local logs for troubleshooting are allowed if they stay on the machine and contain no guide content by default.
 ```
 
 ## 7. Drift and deployment
@@ -761,7 +752,7 @@ TBD
 
 ### Q-020 — Which commands must pass before a milestone is accepted?
 
-Status: BLOCKER  
+Status: DECIDED
 Default assumption:
 
 ```powershell
@@ -772,14 +763,22 @@ Default assumption:
 Decision:
 
 ```text
-TBD
+Milestone acceptance should require automated checks appropriate to the current implementation stage. Initial examples:
+
+- `dotnet build`
+- `dotnet test`
+- `./scripts/validate.ps1`
+- export smoke test: create/load a sample guide and export Markdown, HTML, and PDF
+- project format smoke test: create a guide project folder, save screenshots/assets, close, reopen, and verify content is intact
+
+The exact commands should be captured in repo scripts once the code skeleton exists.
 ```
 
 ## 9. Non-goals
 
 ### Q-021 — Which tempting features are explicitly out of MVP?
 
-Status: BLOCKER  
+Status: DECIDED
 Default assumption:
 
 - cloud sync
@@ -791,7 +790,16 @@ Default assumption:
 Decision:
 
 ```text
-TBD
+Explicitly outside MVP:
+
+- video export with audio
+- cloud sync or cloud storage
+- login, multi-user roles, permissions, and collaboration
+- Confluence, SharePoint, ServiceNow, GitHub, Gitea, or other publishing integrations
+- AI writing, AI summarization, or online language services
+- advanced image editor features beyond simple annotations and optional blur/redaction
+- template marketplace or shared template library
+- mobile app or web app
 ```
 ```
 
@@ -1450,41 +1458,36 @@ Follow-ups:
 
 ## Current phase
 
-Phase: Research / clarification  
-Current milestone: Milestone 0  
-Status: Not started
+Phase: Implementation
+Current milestone: Milestone 1
+Status: Initial repo skeleton created; full build/test validation awaits .NET SDK on PATH
 
 ## Decision log
 
 | Date | Decision | Reason | Impact |
 |---|---|---|---|
-| TBD | MVP is local-first | Reduces complexity and security risk | No cloud features in MVP |
-| TBD | Markdown is first export format | Easy to test and version | PDF/HTML deferred |
-| TBD | `guide.json` is source of truth | Stable app model | Markdown is export only |
+| 2026-04-25 | MVP is local-first | Reduces complexity and security risk | No cloud features in MVP |
+| 2026-04-25 | MVP supports end-to-end guide creation with follow-along screenshot capture | This is the core success criterion | Screenshot capture and basic annotation are MVP scope |
+| 2026-04-25 | MVP exports Markdown, HTML, and PDF | These are the required first export formats | Video with audio is deferred to version 2 |
+| 2026-04-25 | Each guide is a project folder with structured source data and assets | Keeps images, data, and exports together | `guide.json` is the preferred source of truth |
+| 2026-04-25 | UI stack is C#/.NET with WPF | Local Windows fit, no paid third-party runtime | Implementation should prefer free/open-source packages |
+| 2026-04-25 | No telemetry and no cloud in MVP | Content may be sensitive/internal | Logs must remain local and integrations are deferred |
+| 2026-04-25 | Initial solution skeleton created | Starts Milestone 1 with buildable project boundaries | App/Core/Storage/Export/Tests/Scripts/Samples are in place |
+| 2026-04-25 | Root `AGENTS.md` added | Gives Codex stable repo-local instructions | Future sessions have concise scope, architecture, and validation guidance |
+| 2026-04-25 | Docs split into `docs/` | Makes project guidance easier to maintain | Large package remains as historical context |
 
 ## Open blockers
 
 | ID | Question | Owner | Status |
 |---|---|---|---|
-| Q-001 | MVP success criterion | Human | Open |
-| Q-002 | First user | Human | Open |
-| Q-006 | Screenshot capture in MVP? | Human | Open |
-| Q-007 | Annotation in MVP? | Human | Open |
-| Q-008 | First export format | Human | Open |
-| Q-009 | Source of truth | Human | Open |
-| Q-012 | UI stack | Human | Open |
-| Q-015 | Sensitive data assumptions | Human | Open |
-| Q-016 | Cloud allowed? | Human | Open |
-| Q-017 | Telemetry allowed? | Human | Open |
-| Q-020 | Validation commands | Human/Codex | Open |
-| Q-021 | MVP non-goals | Human | Open |
+| None | All blocker questions are decided | Human/Codex | Closed |
 
 ## Milestone progress
 
 | Milestone | Status | Notes |
 |---|---|---|
-| 0 Research and decisions | Not started | Resolve blockers first |
-| 1 Repo skeleton and core model | Not started | Waiting for stack decision |
+| 0 Research and decisions | Complete | Blockers resolved |
+| 1 Repo skeleton and core model | In progress | Initial skeleton created; awaiting .NET SDK validation |
 | 2 Storage layer | Not started | Depends on model |
 | 3 Markdown export | Not started | Depends on storage/model |
 | 4 Basic UI shell | Not started | Depends on stack |
@@ -1496,7 +1499,12 @@ Status: Not started
 
 | Date | Command | Result | Notes |
 |---|---|---|---|
-| TBD | TBD | TBD | TBD |
+| 2026-04-25 | `git diff --check` | Pass | Whitespace check clean |
+| 2026-04-25 | XML/XAML parse check | Pass | Project and XAML files parse as XML |
+| 2026-04-25 | sample `guide.json` parse check | Pass | Sample project JSON parses |
+| 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Blocked | .NET SDK not found on PATH |
+| 2026-04-25 | `git diff --check` | Pass | After adding `AGENTS.md` and updating repo structure |
+| 2026-04-25 | docs blocker scan | Pass | No unresolved blocker markers found in `docs/*.md` |
 
 ## Known risks
 

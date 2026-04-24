@@ -1,0 +1,45 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GuideMaker.App", "src\GuideMaker.App\GuideMaker.App.csproj", "{C487A6D0-8DAE-4A53-90E6-02C3844810C7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GuideMaker.Core", "src\GuideMaker.Core\GuideMaker.Core.csproj", "{37C5563F-D9FB-491C-A604-9424C25D563D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GuideMaker.Storage", "src\GuideMaker.Storage\GuideMaker.Storage.csproj", "{E0B7D684-66BB-4099-975C-F80D998D7136}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GuideMaker.Export", "src\GuideMaker.Export\GuideMaker.Export.csproj", "{C9E35241-F73E-4DE6-BA1C-CF66E8ED9667}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GuideMaker.Tests", "tests\GuideMaker.Tests\GuideMaker.Tests.csproj", "{22DFFBB3-FE96-48DB-8FC0-6AFD3DC6BD09}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{C487A6D0-8DAE-4A53-90E6-02C3844810C7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C487A6D0-8DAE-4A53-90E6-02C3844810C7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C487A6D0-8DAE-4A53-90E6-02C3844810C7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C487A6D0-8DAE-4A53-90E6-02C3844810C7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{37C5563F-D9FB-491C-A604-9424C25D563D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{37C5563F-D9FB-491C-A604-9424C25D563D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{37C5563F-D9FB-491C-A604-9424C25D563D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{37C5563F-D9FB-491C-A604-9424C25D563D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E0B7D684-66BB-4099-975C-F80D998D7136}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E0B7D684-66BB-4099-975C-F80D998D7136}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E0B7D684-66BB-4099-975C-F80D998D7136}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E0B7D684-66BB-4099-975C-F80D998D7136}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C9E35241-F73E-4DE6-BA1C-CF66E8ED9667}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C9E35241-F73E-4DE6-BA1C-CF66E8ED9667}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C9E35241-F73E-4DE6-BA1C-CF66E8ED9667}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C9E35241-F73E-4DE6-BA1C-CF66E8ED9667}.Release|Any CPU.Build.0 = Release|Any CPU
+		{22DFFBB3-FE96-48DB-8FC0-6AFD3DC6BD09}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{22DFFBB3-FE96-48DB-8FC0-6AFD3DC6BD09}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{22DFFBB3-FE96-48DB-8FC0-6AFD3DC6BD09}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{22DFFBB3-FE96-48DB-8FC0-6AFD3DC6BD09}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

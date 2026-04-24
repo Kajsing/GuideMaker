@@ -1,0 +1,32 @@
+{
+  "metadata": {
+    "schemaVersion": "1.0",
+    "title": "Starter guide",
+    "author": "GuideMaker",
+    "description": "Small sample project used for storage and export smoke tests.",
+    "createdAt": "2026-04-25T00:00:00+00:00",
+    "updatedAt": "2026-04-25T00:00:00+00:00"
+  },
+  "steps": [
+    {
+      "id": "b8ec7ad7-fd61-4913-8d57-cb9244b5148d",
+      "order": 1,
+      "title": "Open the application",
+      "body": "Start the application that the guide documents.",
+      "assetIds": [
+        "21413c73-efae-4d15-8ec4-2cc5df7a6914"
+      ],
+      "annotations": []
+    }
+  ],
+  "assets": [
+    {
+      "id": "21413c73-efae-4d15-8ec4-2cc5df7a6914",
+      "relativePath": "assets/open-application.png",
+      "kind": "screenshot",
+      "caption": "Application start screen",
+      "altText": "Screenshot of the application start screen.",
+      "capturedAt": "2026-04-25T00:00:00+00:00"
+    }
+  ]
+}
