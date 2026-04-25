@@ -1,4 +1,5 @@
 using GuideMaker.Core;
+using System.Text.RegularExpressions;
 using Drawing = System.Drawing;
 using Drawing2D = System.Drawing.Drawing2D;
 using Imaging = System.Drawing.Imaging;
@@ -8,6 +9,8 @@ namespace GuideMaker.Export;
 public sealed class ExportAssetRenderer
 {
     public const string ExportAssetsDirectoryName = "assets";
+
+    private static readonly Regex ImageReferenceRegex = new(@"\[\[image:(?<path>[^\]]+)\]\]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     public GuideDocument RenderExportAssets(string projectDirectory, string exportsDirectory, GuideDocument document)
     {
@@ -26,35 +29,57 @@ public sealed class ExportAssetRenderer
         var usedFileNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var renderedAssets = new List<GuideAsset>();
         var assetPathMap = new Dictionary<Guid, string>();
+        var sourceAssetsById = document.Assets.ToDictionary(asset => asset.Id);
+        var sourceAssetsByPath = document.Assets.ToDictionary(
+            asset => NormalizeAssetPath(asset.RelativePath),
+            StringComparer.OrdinalIgnoreCase);
+        var legacyAssetIds = FindLegacyAssetIds(document, sourceAssetsByPath);
+        var imageRefAssetIds = new Dictionary<Guid, Guid>();
 
-        foreach (var asset in document.Assets)
+        foreach (var asset in document.Assets.Where(asset => legacyAssetIds.Contains(asset.Id)))
         {
-            var sourcePath = Path.Combine(projectDirectory, asset.RelativePath.Replace('/', Path.DirectorySeparatorChar));
             var annotations = document.Steps
+                .Where(step => step.ImageRefs.Count == 0)
                 .SelectMany(step => step.Annotations)
                 .Where(annotation => annotation.AssetId == asset.Id)
                 .ToArray();
-            var exportedFileName = CreateExportFileName(asset, annotations.Length > 0, usedFileNames);
-            var exportedPath = Path.Combine(exportAssetsDirectory, exportedFileName);
-
-            if (File.Exists(sourcePath))
-            {
-                if (annotations.Length > 0)
-                {
-                    RenderAnnotatedImage(sourcePath, exportedPath, annotations);
-                }
-                else
-                {
-                    File.Copy(sourcePath, exportedPath, overwrite: true);
-                }
-            }
-
-            var exportedRelativePath = $"{ExportAssetsDirectoryName}/{exportedFileName}";
+            var exportedRelativePath = RenderExportAsset(
+                projectDirectory,
+                exportAssetsDirectory,
+                asset,
+                annotations,
+                crop: null,
+                usedFileNames);
             assetPathMap[asset.Id] = exportedRelativePath;
             renderedAssets.Add(asset with
             {
                 RelativePath = exportedRelativePath
             });
+        }
+
+        foreach (var step in document.Steps)
+        {
+            foreach (var imageRef in step.ImageRefs)
+            {
+                if (!sourceAssetsById.TryGetValue(imageRef.AssetId, out var sourceAsset))
+                {
+                    continue;
+                }
+
+                var exportedRelativePath = RenderExportAsset(
+                    projectDirectory,
+                    exportAssetsDirectory,
+                    sourceAsset,
+                    imageRef.Annotations,
+                    imageRef.Crop,
+                    usedFileNames);
+                imageRefAssetIds[imageRef.Id] = imageRef.Id;
+                renderedAssets.Add(sourceAsset with
+                {
+                    Id = imageRef.Id,
+                    RelativePath = exportedRelativePath
+                });
+            }
         }
 
         return document with
@@ -63,26 +88,85 @@ public sealed class ExportAssetRenderer
             Steps = document.Steps.Select(step => step with
             {
                 Body = ReplaceImageReferences(step.Body, document.Assets, assetPathMap),
+                AssetIds = step.ImageRefs.Count > 0
+                    ? step.ImageRefs
+                        .Where(imageRef => imageRefAssetIds.ContainsKey(imageRef.Id))
+                        .Select(imageRef => imageRefAssetIds[imageRef.Id])
+                        .ToList()
+                    : step.AssetIds,
+                ImageRefs = [],
                 Annotations = []
             }).ToList()
         };
     }
 
-    private static void RenderAnnotatedImage(string sourcePath, string exportedPath, IReadOnlyCollection<GuideAnnotation> annotations)
+    private static string RenderExportAsset(
+        string projectDirectory,
+        string exportAssetsDirectory,
+        GuideAsset asset,
+        IReadOnlyCollection<GuideAnnotation> annotations,
+        ImageCropBounds? crop,
+        ISet<string> usedFileNames)
+    {
+        var sourcePath = Path.Combine(projectDirectory, asset.RelativePath.Replace('/', Path.DirectorySeparatorChar));
+        var shouldRenderImage = annotations.Count > 0 || crop is not null;
+        var exportedFileName = CreateExportFileName(asset, shouldRenderImage, usedFileNames);
+        var exportedPath = Path.Combine(exportAssetsDirectory, exportedFileName);
+
+        if (File.Exists(sourcePath))
+        {
+            if (shouldRenderImage)
+            {
+                RenderImage(sourcePath, exportedPath, annotations, crop);
+            }
+            else
+            {
+                File.Copy(sourcePath, exportedPath, overwrite: true);
+            }
+        }
+
+        return $"{ExportAssetsDirectoryName}/{exportedFileName}";
+    }
+
+    private static void RenderImage(
+        string sourcePath,
+        string exportedPath,
+        IReadOnlyCollection<GuideAnnotation> annotations,
+        ImageCropBounds? crop)
     {
         using var sourceImage = Drawing.Image.FromFile(sourcePath);
-        using var bitmap = new Drawing.Bitmap(sourceImage.Width, sourceImage.Height, Imaging.PixelFormat.Format32bppArgb);
+        var cropRectangle = CalculateCropRectangle(sourceImage.Width, sourceImage.Height, crop);
+        using var bitmap = new Drawing.Bitmap(cropRectangle.Width, cropRectangle.Height, Imaging.PixelFormat.Format32bppArgb);
         using var graphics = Drawing.Graphics.FromImage(bitmap);
         graphics.SmoothingMode = Drawing2D.SmoothingMode.AntiAlias;
         graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
-        graphics.DrawImage(sourceImage, 0, 0, sourceImage.Width, sourceImage.Height);
+        graphics.DrawImage(
+            sourceImage,
+            new Drawing.Rectangle(0, 0, bitmap.Width, bitmap.Height),
+            cropRectangle,
+            Drawing.GraphicsUnit.Pixel);
 
         foreach (var annotation in annotations)
         {
-            DrawAnnotation(graphics, annotation, sourceImage.Width, sourceImage.Height);
+            DrawAnnotation(graphics, annotation, bitmap.Width, bitmap.Height);
         }
 
         bitmap.Save(exportedPath, Imaging.ImageFormat.Png);
+    }
+
+    private static Drawing.Rectangle CalculateCropRectangle(int imageWidth, int imageHeight, ImageCropBounds? crop)
+    {
+        if (crop is null)
+        {
+            return new Drawing.Rectangle(0, 0, imageWidth, imageHeight);
+        }
+
+        var left = ClampToRange((int)Math.Round(crop.X * imageWidth), 0, imageWidth - 1);
+        var top = ClampToRange((int)Math.Round(crop.Y * imageHeight), 0, imageHeight - 1);
+        var right = ClampToRange((int)Math.Round((crop.X + crop.Width) * imageWidth), left + 1, imageWidth);
+        var bottom = ClampToRange((int)Math.Round((crop.Y + crop.Height) * imageHeight), top + 1, imageHeight);
+
+        return new Drawing.Rectangle(left, top, right - left, bottom - top);
     }
 
     private static void DrawAnnotation(Drawing.Graphics graphics, GuideAnnotation annotation, int imageWidth, int imageHeight)
@@ -183,6 +267,35 @@ public sealed class ExportAssetRenderer
         return updatedBody;
     }
 
+    private static HashSet<Guid> FindLegacyAssetIds(
+        GuideDocument document,
+        IReadOnlyDictionary<string, GuideAsset> sourceAssetsByPath)
+    {
+        var assetIds = new HashSet<Guid>();
+
+        foreach (var step in document.Steps)
+        {
+            if (step.ImageRefs.Count == 0)
+            {
+                foreach (var assetId in step.AssetIds)
+                {
+                    assetIds.Add(assetId);
+                }
+            }
+
+            foreach (Match match in ImageReferenceRegex.Matches(step.Body))
+            {
+                var relativePath = NormalizeAssetPath(match.Groups["path"].Value);
+                if (sourceAssetsByPath.TryGetValue(relativePath, out var asset))
+                {
+                    assetIds.Add(asset.Id);
+                }
+            }
+        }
+
+        return assetIds;
+    }
+
     private static string CreateExportFileName(GuideAsset asset, bool hasAnnotations, ISet<string> usedFileNames)
     {
         var sourceFileName = Path.GetFileName(asset.RelativePath.Replace('\\', '/'));
@@ -214,6 +327,16 @@ public sealed class ExportAssetRenderer
     {
         var invalid = Path.GetInvalidFileNameChars();
         return string.Concat(value.Select(character => invalid.Contains(character) ? '-' : character)).Trim();
+    }
+
+    private static string NormalizeAssetPath(string value)
+    {
+        return value.Trim().Replace('\\', '/');
+    }
+
+    private static int ClampToRange(int value, int min, int max)
+    {
+        return Math.Min(Math.Max(value, min), max);
     }
 
     private static Drawing.Color ParseColor(string color, Drawing.Color fallback)

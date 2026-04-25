@@ -65,6 +65,7 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | 2026-04-25 | Advanced label styling deferred to v2 | Font family, presets, borders, shadows, and templates would expand scope | Keep M8 focused on practical label controls and export consistency |
 | 2026-04-25 | Image pool and per-step image refs selected as next architecture step | Follow-along capture and crop need reusable originals and per-step usage data | Add migration-compatible `StepImageRef`, keep originals in the pool, and render crop/annotations into generated export assets |
 | 2026-04-25 | Migration-compatible step image refs added | The app needs reusable original images before follow-along capture and crop editing | `GuideStep.ImageRefs`, optional crop bounds, per-ref annotations, and storage validation now coexist with legacy `AssetIds` |
+| 2026-04-25 | Export rendering prefers step image refs | Cropped/reused images need their own generated output instead of mutating originals | Export assets now render per-step image refs with crop and annotations while legacy asset export remains readable |
 
 ## Open Blockers
 
@@ -84,7 +85,7 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | 5 Images and screenshot capture | Complete | Import, paste, capture, attach, and preview wired |
 | 6 Basic annotation | Complete | Highlight, label, arrow, redaction overlays wired |
 | 7 PDF export and preview | Complete | PDFsharp export, local preview, and export warning added |
-| 8 MVP hardening | In progress | Image pool model/storage slice is in place; export migration, follow-along capture, crop, annotation editor polish, rotate controls, and final polish remain |
+| 8 MVP hardening | In progress | Image pool model/storage/export slices are in place; UI image pool, follow-along capture, crop, annotation editor polish, rotate controls, and final polish remain |
 
 ## Validation Log
 
@@ -140,6 +141,8 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Basic label styling build; Release tests passed; 25 tests passed |
 | 2026-04-25 | `git diff --check` | Pass | Image pool architecture plan whitespace check clean |
 | 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Step image ref model/storage validation build; Release tests passed; 28 tests passed after closing a running app process that locked build outputs |
+| 2026-04-25 | `git diff --check` | Pass | Step image ref export migration whitespace check clean |
+| 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Step image ref export migration build; Release tests passed; 29 tests passed |
 
 ## Known Risks
 
@@ -166,7 +169,7 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 
 ## Next Recommended Step
 
-Continue Milestone 8 image pool migration by updating export rendering to prefer `StepImageRef`, including crop bounds and per-ref annotations, while keeping legacy `AssetIds` readable.
+Continue Milestone 8 image pool migration by refactoring app state to separate the reusable image pool from selected-step image references.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1
