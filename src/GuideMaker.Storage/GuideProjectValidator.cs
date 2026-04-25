@@ -104,6 +104,8 @@ public static class GuideProjectValidator
                 }
             }
 
+            ValidateImageRefs(step, assetIds, errors);
+
             foreach (var annotation in step.Annotations)
             {
                 if (!assetIds.Contains(annotation.AssetId))
@@ -116,20 +118,63 @@ public static class GuideProjectValidator
         }
     }
 
+    private static void ValidateImageRefs(GuideStep step, ISet<Guid> assetIds, List<string> errors)
+    {
+        var imageRefIds = new HashSet<Guid>();
+
+        foreach (var imageRef in step.ImageRefs)
+        {
+            if (!imageRefIds.Add(imageRef.Id))
+            {
+                errors.Add($"Step '{step.Id}' has duplicate image reference id '{imageRef.Id}'.");
+            }
+
+            if (!assetIds.Contains(imageRef.AssetId))
+            {
+                errors.Add($"Image reference '{imageRef.Id}' references unknown asset '{imageRef.AssetId}'.");
+            }
+
+            if (imageRef.Crop is not null && !IsValidBounds(imageRef.Crop.X, imageRef.Crop.Y, imageRef.Crop.Width, imageRef.Crop.Height))
+            {
+                errors.Add($"Image reference '{imageRef.Id}' must have normalized crop bounds within the image.");
+            }
+
+            foreach (var annotation in imageRef.Annotations)
+            {
+                if (!assetIds.Contains(annotation.AssetId))
+                {
+                    errors.Add($"Annotation '{annotation.Id}' references unknown asset '{annotation.AssetId}'.");
+                }
+
+                if (annotation.AssetId != imageRef.AssetId)
+                {
+                    errors.Add($"Annotation '{annotation.Id}' must reference the same asset as image reference '{imageRef.Id}'.");
+                }
+
+                ValidateBounds(annotation, errors);
+            }
+        }
+    }
+
     private static void ValidateBounds(GuideAnnotation annotation, List<string> errors)
     {
         var bounds = annotation.Bounds;
-        if (!IsNormalized(bounds.X) ||
-            !IsNormalized(bounds.Y) ||
-            !IsNormalized(bounds.Width) ||
-            !IsNormalized(bounds.Height) ||
-            bounds.Width <= 0 ||
-            bounds.Height <= 0 ||
-            bounds.X + bounds.Width > 1 ||
-            bounds.Y + bounds.Height > 1)
+        if (!IsValidBounds(bounds.X, bounds.Y, bounds.Width, bounds.Height))
         {
             errors.Add($"Annotation '{annotation.Id}' must have normalized bounds within the image.");
         }
+    }
+
+    private static bool IsValidBounds(double x, double y, double width, double height)
+    {
+        return IsNormalized(x) &&
+            IsNormalized(y) &&
+            IsNormalized(width) &&
+            IsNormalized(height) &&
+            width > 0 &&
+            height > 0 &&
+            x + width <= 1 &&
+            y + height <= 1;
     }
 
     private static bool IsNormalized(double value)

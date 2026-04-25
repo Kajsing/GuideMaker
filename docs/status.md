@@ -64,6 +64,7 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | 2026-04-25 | Basic label styling added | Labels need size and color controls without turning the MVP into a full document editor | Label annotations now support size, bold, italic, text color, box color, and box opacity |
 | 2026-04-25 | Advanced label styling deferred to v2 | Font family, presets, borders, shadows, and templates would expand scope | Keep M8 focused on practical label controls and export consistency |
 | 2026-04-25 | Image pool and per-step image refs selected as next architecture step | Follow-along capture and crop need reusable originals and per-step usage data | Add migration-compatible `StepImageRef`, keep originals in the pool, and render crop/annotations into generated export assets |
+| 2026-04-25 | Migration-compatible step image refs added | The app needs reusable original images before follow-along capture and crop editing | `GuideStep.ImageRefs`, optional crop bounds, per-ref annotations, and storage validation now coexist with legacy `AssetIds` |
 
 ## Open Blockers
 
@@ -83,7 +84,7 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | 5 Images and screenshot capture | Complete | Import, paste, capture, attach, and preview wired |
 | 6 Basic annotation | Complete | Highlight, label, arrow, redaction overlays wired |
 | 7 PDF export and preview | Complete | PDFsharp export, local preview, and export warning added |
-| 8 MVP hardening | In progress | Image pool migration, follow-along capture, crop, annotation editor polish, rotate controls, and final polish remain |
+| 8 MVP hardening | In progress | Image pool model/storage slice is in place; export migration, follow-along capture, crop, annotation editor polish, rotate controls, and final polish remain |
 
 ## Validation Log
 
@@ -138,6 +139,7 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Opaque redaction build; Release tests passed; 25 tests passed |
 | 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Basic label styling build; Release tests passed; 25 tests passed |
 | 2026-04-25 | `git diff --check` | Pass | Image pool architecture plan whitespace check clean |
+| 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Step image ref model/storage validation build; Release tests passed; 28 tests passed after closing a running app process that locked build outputs |
 
 ## Known Risks
 
@@ -164,7 +166,7 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 
 ## Next Recommended Step
 
-Start Milestone 8 image pool migration with the core model and storage validation slice.
+Continue Milestone 8 image pool migration by updating export rendering to prefer `StepImageRef`, including crop bounds and per-ref annotations, while keeping legacy `AssetIds` readable.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1

@@ -282,6 +282,200 @@ public sealed class GuideProjectStoreTests
     }
 
     [Fact]
+    public async Task CreateAsync_WhenStepImageRefIsValid_RoundTripsImageRef()
+    {
+        var projectDirectory = Path.Combine(Path.GetTempPath(), "GuideMaker.Tests", Guid.NewGuid().ToString("N"));
+        var assetId = Guid.NewGuid();
+        var imageRefId = Guid.NewGuid();
+        var document = GuideDocument.Create("Printer setup", "Codex") with
+        {
+            Steps =
+            [
+                GuideStep.Create(1, "Open settings") with
+                {
+                    ImageRefs =
+                    [
+                        new StepImageRef
+                        {
+                            Id = imageRefId,
+                            AssetId = assetId,
+                            Crop = new ImageCropBounds
+                            {
+                                X = 0.1,
+                                Y = 0.2,
+                                Width = 0.7,
+                                Height = 0.6
+                            },
+                            Annotations =
+                            [
+                                new GuideAnnotation
+                                {
+                                    Id = Guid.NewGuid(),
+                                    Kind = GuideAnnotationKind.Rectangle,
+                                    AssetId = assetId,
+                                    Bounds = new AnnotationBounds
+                                    {
+                                        X = 0.1,
+                                        Y = 0.1,
+                                        Width = 0.3,
+                                        Height = 0.2
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ],
+            Assets =
+            [
+                new GuideAsset
+                {
+                    Id = assetId,
+                    RelativePath = "assets/open-settings.png",
+                    Kind = GuideAssetKind.Screenshot,
+                    CapturedAt = DateTimeOffset.UtcNow
+                }
+            ]
+        };
+
+        try
+        {
+            var store = new GuideProjectStore();
+
+            await store.CreateAsync(projectDirectory, document);
+            var loaded = await store.LoadAsync(projectDirectory);
+
+            var imageRef = Assert.Single(loaded.Document.Steps[0].ImageRefs);
+            Assert.Equal(imageRefId, imageRef.Id);
+            Assert.Equal(assetId, imageRef.AssetId);
+            Assert.Equal(0.1, imageRef.Crop?.X);
+            Assert.Single(imageRef.Annotations);
+        }
+        finally
+        {
+            if (Directory.Exists(projectDirectory))
+            {
+                Directory.Delete(projectDirectory, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenStepImageRefCropIsOutsideImage_ThrowsValidationException()
+    {
+        var projectDirectory = Path.Combine(Path.GetTempPath(), "GuideMaker.Tests", Guid.NewGuid().ToString("N"));
+        var assetId = Guid.NewGuid();
+        var document = GuideDocument.Create("Printer setup", "Codex") with
+        {
+            Steps =
+            [
+                GuideStep.Create(1, "Open settings") with
+                {
+                    ImageRefs =
+                    [
+                        new StepImageRef
+                        {
+                            Id = Guid.NewGuid(),
+                            AssetId = assetId,
+                            Crop = new ImageCropBounds
+                            {
+                                X = 0.8,
+                                Y = 0.1,
+                                Width = 0.4,
+                                Height = 0.4
+                            }
+                        }
+                    ]
+                }
+            ],
+            Assets =
+            [
+                new GuideAsset
+                {
+                    Id = assetId,
+                    RelativePath = "assets/open-settings.png",
+                    Kind = GuideAssetKind.Screenshot,
+                    CapturedAt = DateTimeOffset.UtcNow
+                }
+            ]
+        };
+
+        var store = new GuideProjectStore();
+
+        var exception = await Assert.ThrowsAsync<GuideProjectValidationException>(
+            () => store.CreateAsync(projectDirectory, document));
+
+        Assert.Contains(exception.Errors, error => error.Contains("normalized crop bounds", StringComparison.Ordinal));
+        Assert.False(Directory.Exists(projectDirectory));
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenStepImageRefAnnotationReferencesDifferentAsset_ThrowsValidationException()
+    {
+        var projectDirectory = Path.Combine(Path.GetTempPath(), "GuideMaker.Tests", Guid.NewGuid().ToString("N"));
+        var assetId = Guid.NewGuid();
+        var otherAssetId = Guid.NewGuid();
+        var document = GuideDocument.Create("Printer setup", "Codex") with
+        {
+            Steps =
+            [
+                GuideStep.Create(1, "Open settings") with
+                {
+                    ImageRefs =
+                    [
+                        new StepImageRef
+                        {
+                            Id = Guid.NewGuid(),
+                            AssetId = assetId,
+                            Annotations =
+                            [
+                                new GuideAnnotation
+                                {
+                                    Id = Guid.NewGuid(),
+                                    Kind = GuideAnnotationKind.Rectangle,
+                                    AssetId = otherAssetId,
+                                    Bounds = new AnnotationBounds
+                                    {
+                                        X = 0.1,
+                                        Y = 0.1,
+                                        Width = 0.3,
+                                        Height = 0.2
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ],
+            Assets =
+            [
+                new GuideAsset
+                {
+                    Id = assetId,
+                    RelativePath = "assets/open-settings.png",
+                    Kind = GuideAssetKind.Screenshot,
+                    CapturedAt = DateTimeOffset.UtcNow
+                },
+                new GuideAsset
+                {
+                    Id = otherAssetId,
+                    RelativePath = "assets/other.png",
+                    Kind = GuideAssetKind.Screenshot,
+                    CapturedAt = DateTimeOffset.UtcNow
+                }
+            ]
+        };
+
+        var store = new GuideProjectStore();
+
+        var exception = await Assert.ThrowsAsync<GuideProjectValidationException>(
+            () => store.CreateAsync(projectDirectory, document));
+
+        Assert.Contains(exception.Errors, error => error.Contains("must reference the same asset", StringComparison.Ordinal));
+        Assert.False(Directory.Exists(projectDirectory));
+    }
+
+    [Fact]
     public async Task LoadAsync_WhenAssetFileIsMissing_ReportsMissingAssetPath()
     {
         var projectDirectory = Path.Combine(Path.GetTempPath(), "GuideMaker.Tests", Guid.NewGuid().ToString("N"));
