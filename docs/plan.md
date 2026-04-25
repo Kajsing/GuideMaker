@@ -178,3 +178,33 @@ Implementation order:
 5. Change import, paste, and capture so images enter the pool first, then attach to the selected step.
 6. Add a crop editor that stores crop on the step image reference and preserves original pool images.
 7. Build Follow Along Capture on top of the pool: start capture mode, collect screenshots into the pool, attach to the active step, and stop when GuideMaker is restored.
+
+## Next Session Plan - 2026-04-27
+
+Goal: turn the current build into an MVP candidate by smoke testing the full authoring flow and fixing only the issues that block that flow.
+
+1. Start with a real-project smoke test.
+   - Open `C:\project\test\exports`.
+   - Add the same Pool image to one step more than once.
+   - Give each use a different crop and annotation set.
+   - Export Markdown, HTML, and PDF and verify each rendered image matches the right use.
+
+2. Smoke test Follow Along Capture end to end.
+   - Start capture from an active step.
+   - Verify left, right, and middle clicks only capture the monitor under the cursor.
+   - Restore GuideMaker and confirm capture stops.
+   - Attach or reuse captured pool images in step text.
+
+3. Fix MVP-blocking UI issues found during smoke testing.
+   - Prioritize wrong export output, lost selections, broken preview, missing images, or unusable crop/annotation controls.
+   - Defer cosmetic cleanup unless it blocks authoring.
+
+4. Do one focused MVP polish pass.
+   - Improve workspace image fit if it blocks annotation/crop work.
+   - Correct the annotation expander arrow or replace it with clearer show/hide text.
+   - Revisit the Step/Pool tab layout only if the smoke test shows it causes real mistakes.
+
+5. Validate and tag the state.
+   - Run `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1`.
+   - Update `docs/status.md` with smoke-test results and remaining known limitations.
+   - If the smoke test passes, mark the build as MVP candidate in `docs/status.md`.

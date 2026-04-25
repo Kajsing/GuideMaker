@@ -219,7 +219,7 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 
 ## Next Recommended Step
 
-Smoke test duplicate pool image attachment, per-use crop/annotations, visible image pool, basic crop editing, and initial Follow Along Capture on a real guide project.
+Next session starts from `docs/plan.md` section `Next Session Plan - 2026-04-27`: smoke test duplicate pool image attachment, per-use crop/annotations, visible image pool, basic crop editing, and initial Follow Along Capture on a real guide project. Then fix only MVP-blocking issues before calling the build an MVP candidate.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1
