@@ -65,6 +65,30 @@ public sealed class HtmlGuideExporterTests
     }
 
     [Fact]
+    public void Export_PreservesBlankLinesInBody()
+    {
+        var document = GuideDocument.Create("App guide", "Codex") with
+        {
+            Steps =
+            [
+                GuideStep.Create(1, "Open app", "First line.\n\nSecond line.")
+            ]
+        };
+
+        var html = new HtmlGuideExporter().Export(document);
+
+        Assert.Contains("<p>First line.</p>", html);
+        Assert.Contains("<div class=\"guide-body-blank\" aria-hidden=\"true\"></div>", html);
+        Assert.Contains("<p>Second line.</p>", html);
+        Assert.True(
+            html.IndexOf("<p>First line.</p>", StringComparison.Ordinal) <
+            html.IndexOf("<div class=\"guide-body-blank\" aria-hidden=\"true\"></div>", StringComparison.Ordinal));
+        Assert.True(
+            html.IndexOf("<div class=\"guide-body-blank\" aria-hidden=\"true\"></div>", StringComparison.Ordinal) <
+            html.IndexOf("<p>Second line.</p>", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Export_RendersAnnotationsAsImageOverlays()
     {
         var assetId = Guid.NewGuid();

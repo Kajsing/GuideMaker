@@ -188,7 +188,7 @@
                 <ColumnDefinition Width="320" />
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="8" />
-                <ColumnDefinition Width="420" MinWidth="320" />
+                <ColumnDefinition Width="560" MinWidth="380" />
             </Grid.ColumnDefinitions>
 
             <Border Grid.Column="0"
@@ -258,9 +258,9 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
-                        <RowDefinition Height="2*" />
+                        <RowDefinition Height="1.25*" />
                         <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
+                        <RowDefinition Height="1.35*" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
@@ -295,13 +295,13 @@
                                  TextWrapping="Wrap"
                                  VerticalScrollBarVisibility="Auto"
                                  VerticalContentAlignment="Top"
-                                 MinHeight="260"
+                                 MinHeight="180"
                                  TextChanged="StepBodyTextBox_TextChanged" />
                     </Grid>
 
                     <DockPanel Grid.Row="4"
                                Margin="0,18,0,8">
-                        <TextBlock Text="Images"
+                        <TextBlock Text="Step images"
                                    FontSize="13"
                                    FontWeight="SemiBold"
                                    DockPanel.Dock="Top"
@@ -339,6 +339,9 @@
 
                     <ListBox x:Name="StepAssetsListBox"
                              Grid.Row="5"
+                             MinHeight="180"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                              PreviewMouseLeftButtonDown="StepAssetsListBox_PreviewMouseLeftButtonDown"
                              SelectionChanged="StepAssetsListBox_SelectionChanged">
                         <ListBox.ItemContainerStyle>
@@ -815,12 +818,12 @@
                                     ClipToBounds="True">
                                 <Viewbox Stretch="Uniform">
                                     <Grid x:Name="WorkspaceImageSurface"
-                                          Width="340"
+                                          Width="760"
                                           Height="520"
                                           Background="Transparent"
                                           PreviewMouseMove="WorkspaceImageSurface_PreviewMouseMove"
                                           PreviewMouseLeftButtonUp="WorkspaceImageSurface_PreviewMouseLeftButtonUp">
-                                        <Canvas Width="340"
+                                        <Canvas Width="760"
                                                 Height="520">
                                             <Image Source="{Binding ElementName=StepAssetsListBox, Path=SelectedItem.FullPath}"
                                                    Canvas.Left="{Binding ElementName=StepAssetsListBox, Path=SelectedItem.WorkspaceImageX}"
@@ -832,7 +835,7 @@
                                         <ItemsControl ItemsSource="{Binding ElementName=StepAssetsListBox, Path=SelectedItem.Annotations}">
                                             <ItemsControl.ItemsPanel>
                                                 <ItemsPanelTemplate>
-                                                    <Canvas Width="340"
+                                                    <Canvas Width="760"
                                                             Height="520" />
                                                 </ItemsPanelTemplate>
                                             </ItemsControl.ItemsPanel>

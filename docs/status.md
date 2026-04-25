@@ -68,6 +68,8 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | 2026-04-25 | Export rendering prefers step image refs | Cropped/reused images need their own generated output instead of mutating originals | Export assets now render per-step image refs with crop and annotations while legacy asset export remains readable |
 | 2026-04-25 | App save/load bridges legacy images to step image refs | The UI still edits step image lists while storage needs the new per-step image reference model | Imported, pasted, and captured images now get `StepImageRef` entries; older projects migrate into refs when saved |
 | 2026-04-25 | Step image ref body tokens map to rendered images | Smoke testing showed original images could export without annotations and then repeat later in the step | `[[image:...]]` tokens in steps with image refs now target the rendered image-ref asset and no longer force original legacy image export |
+| 2026-04-25 | Step image list and workspace made roomier | Image handling became cramped once steps had multiple screenshots | Step images now get more vertical space, the workspace pane starts wider, and the Image workspace uses a wider fitting surface for annotations |
+| 2026-04-25 | HTML export preserves blank body lines | Smoke testing showed empty lines in step text disappeared in export preview | Blank lines now render as spacing in HTML export and preview |
 
 ## Open Blockers
 
@@ -149,6 +151,10 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | App step image ref bridge build; Release tests passed; 29 tests passed after closing a running app process that locked build outputs |
 | 2026-04-25 | `git diff --check` | Pass | Step image ref body token export fix whitespace check clean |
 | 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Step image ref body token export fix build; Release tests passed; 29 tests passed |
+| 2026-04-25 | `git diff --check` | Pass | Roomier step image list and workspace whitespace check clean |
+| 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Roomier step image list and workspace build; Release tests passed; 29 tests passed |
+| 2026-04-25 | `git diff --check` | Pass | HTML blank-line export fix whitespace check clean |
+| 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | HTML blank-line export fix build; Release tests passed; 30 tests passed |
 
 ## Known Risks
 

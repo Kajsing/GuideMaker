@@ -1624,7 +1624,7 @@ public partial class MainWindow : Window
             const double thumbFrameHeight = 64;
             const double editorFrameWidth = 360;
             const double editorFrameHeight = 210;
-            const double workspaceFrameWidth = 340;
+            const double workspaceFrameWidth = 760;
             const double workspaceFrameHeight = 520;
 
             var annotationList = annotations.ToArray();
