@@ -96,12 +96,34 @@ public sealed class HtmlGuideExporterTests
                             Kind = GuideAnnotationKind.Label,
                             AssetId = assetId,
                             Text = "Click here",
+                            Style = new GuideAnnotationStyle
+                            {
+                                FontSize = 20,
+                                IsBold = false,
+                                IsItalic = true,
+                                TextColor = "#202124",
+                                BackgroundColor = "#FBBC04",
+                                BackgroundOpacity = 0.5
+                            },
                             Bounds = new AnnotationBounds
                             {
                                 X = 0.5,
                                 Y = 0.1,
                                 Width = 0.2,
                                 Height = 0.1
+                            }
+                        },
+                        new GuideAnnotation
+                        {
+                            Id = Guid.NewGuid(),
+                            Kind = GuideAnnotationKind.Blur,
+                            AssetId = assetId,
+                            Bounds = new AnnotationBounds
+                            {
+                                X = 0.2,
+                                Y = 0.3,
+                                Width = 0.25,
+                                Height = 0.15
                             }
                         }
                     ]
@@ -123,10 +145,20 @@ public sealed class HtmlGuideExporterTests
         var html = new HtmlGuideExporter().Export(document, "../");
 
         Assert.Contains("class=\"guide-image-frame\"", html);
+        Assert.Contains("<meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\">", html);
         Assert.Contains("guide-annotation-rectangle", html);
         Assert.Contains("left:10%;top:20%;width:30%;height:40%;", html);
         Assert.Contains("guide-annotation-label", html);
         Assert.Contains("Click here", html);
+        Assert.Contains("font-size:20px", html);
+        Assert.Contains("font-weight:400", html);
+        Assert.Contains("font-style:italic", html);
+        Assert.Contains("color:#202124", html);
+        Assert.Contains("background:rgba(251,188,4,0.5)", html);
+        Assert.Contains("guide-annotation-blur", html);
+        Assert.Contains("background: #202124", html);
+        Assert.DoesNotContain("opacity: .78", html);
+        Assert.Contains("left:20%;top:30%;width:25%;height:15%;", html);
     }
 
     private static int CountOccurrences(string value, string search)

@@ -394,12 +394,13 @@
                                                                 BorderBrush="{Binding BorderBrush}"
                                                                 BorderThickness="{Binding BorderThickness}"
                                                                 Background="{Binding Background}">
-                                                            <TextBlock Text="{Binding Text}"
-                                                                       Foreground="#FFFFFF"
-                                                                       FontSize="10"
-                                                                       FontWeight="SemiBold"
-                                                                       Margin="3,1"
-                                                                       TextTrimming="CharacterEllipsis" />
+                                                        <TextBlock Text="{Binding Text}"
+                                                                   Foreground="{Binding TextBrush}"
+                                                                   FontSize="{Binding ThumbFontSize}"
+                                                                   FontWeight="{Binding TextFontWeight}"
+                                                                   FontStyle="{Binding TextFontStyle}"
+                                                                   Margin="3,1"
+                                                                   TextTrimming="CharacterEllipsis" />
                                                         </Border>
                                                     </DataTemplate>
                                                 </ItemsControl.ItemTemplate>
@@ -486,29 +487,61 @@
                                             Margin="0,0,8,6"
                                             Click="RemoveAnnotationButton_Click" />
                                 </WrapPanel>
-                                <ListBox x:Name="AnnotationListBox"
-                                         MinHeight="96"
-                                         MaxHeight="210"
-                                         ScrollViewer.VerticalScrollBarVisibility="Auto"
-                                         SelectionChanged="AnnotationListBox_SelectionChanged">
-                                    <ListBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <StackPanel Margin="4,4">
-                                                <TextBlock Text="{Binding Summary}"
-                                                           FontWeight="SemiBold"
-                                                           Foreground="{DynamicResource TextBrush}" />
-                                                <TextBlock Text="{Binding PositionSummary}"
-                                                           Margin="0,2,0,0"
-                                                           Foreground="{DynamicResource MutedTextBrush}" />
-                                            </StackPanel>
-                                        </DataTemplate>
-                                    </ListBox.ItemTemplate>
-                                </ListBox>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="36" />
+                                    </Grid.ColumnDefinitions>
+                                    <ListBox x:Name="AnnotationListBox"
+                                             MinHeight="96"
+                                             MaxHeight="210"
+                                             ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                             SelectionChanged="AnnotationListBox_SelectionChanged">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Margin="4,4">
+                                                    <TextBlock Text="{Binding Summary}"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="{DynamicResource TextBrush}" />
+                                                    <TextBlock Text="{Binding PositionSummary}"
+                                                               Margin="0,2,0,0"
+                                                               Foreground="{DynamicResource MutedTextBrush}" />
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                    <StackPanel Grid.Column="1"
+                                                Margin="6,0,0,0">
+                                        <Button x:Name="MoveAnnotationUpButton"
+                                                Content="▲"
+                                                MinWidth="30"
+                                                MinHeight="30"
+                                                Width="30"
+                                                Height="30"
+                                                Padding="0"
+                                                Margin="0,0,0,6"
+                                                Click="MoveAnnotationUpButton_Click" />
+                                        <Button x:Name="MoveAnnotationDownButton"
+                                                Content="▼"
+                                                MinWidth="30"
+                                                MinHeight="30"
+                                                Width="30"
+                                                Height="30"
+                                                Padding="0"
+                                                Click="MoveAnnotationDownButton_Click" />
+                                    </StackPanel>
+                                </Grid>
                                 </DockPanel>
 
                                 <Grid Grid.Column="1"
                                       Margin="18,0,0,0">
                                 <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
@@ -604,6 +637,124 @@
                                            Margin="0,8,0,0"
                                            VerticalAlignment="Center"
                                            Foreground="{DynamicResource MutedTextBrush}" />
+
+                                <Border Grid.Row="5"
+                                        Grid.ColumnSpan="3"
+                                        Margin="0,16,0,8"
+                                        BorderBrush="{DynamicResource BorderBrushSoft}"
+                                        BorderThickness="0,1,0,0" />
+
+                                <Grid x:Name="LabelStylePanel"
+                                      Grid.Row="6"
+                                      Grid.ColumnSpan="3">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="70" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="52" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Text="Size"
+                                               VerticalAlignment="Center"
+                                               Foreground="{DynamicResource MutedTextBrush}" />
+                                    <Slider x:Name="LabelFontSizeSlider"
+                                            Grid.Column="1"
+                                            Margin="0,0,10,0"
+                                            Minimum="8"
+                                            Maximum="36"
+                                            ValueChanged="LabelStyle_ValueChanged" />
+                                    <TextBlock Grid.Column="2"
+                                               Text="{Binding ElementName=LabelFontSizeSlider, Path=Value, StringFormat={}{0:0}px}"
+                                               VerticalAlignment="Center"
+                                               Foreground="{DynamicResource MutedTextBrush}" />
+
+                                    <TextBlock Grid.Row="1"
+                                               Text="Style"
+                                               Margin="0,8,0,0"
+                                               VerticalAlignment="Center"
+                                               Foreground="{DynamicResource MutedTextBrush}" />
+                                    <StackPanel Grid.Row="1"
+                                                Grid.Column="1"
+                                                Grid.ColumnSpan="2"
+                                                Margin="0,8,0,0"
+                                                Orientation="Horizontal">
+                                        <ToggleButton x:Name="LabelBoldToggle"
+                                                      Content="B"
+                                                      MinWidth="34"
+                                                      Width="34"
+                                                      Height="30"
+                                                      Padding="0"
+                                                      FontWeight="Bold"
+                                                      Click="LabelStyleToggle_Click" />
+                                        <ToggleButton x:Name="LabelItalicToggle"
+                                                      Content="I"
+                                                      MinWidth="34"
+                                                      Width="34"
+                                                      Height="30"
+                                                      Padding="0"
+                                                      Margin="8,0,0,0"
+                                                      FontStyle="Italic"
+                                                      Click="LabelStyleToggle_Click" />
+                                    </StackPanel>
+
+                                    <TextBlock Grid.Row="2"
+                                               Text="Text"
+                                               Margin="0,10,0,0"
+                                               VerticalAlignment="Center"
+                                               Foreground="{DynamicResource MutedTextBrush}" />
+                                    <StackPanel Grid.Row="2"
+                                                Grid.Column="1"
+                                                Grid.ColumnSpan="2"
+                                                Margin="0,10,0,0"
+                                                Orientation="Horizontal">
+                                        <Button Width="28" Height="28" MinWidth="28" Padding="0" Margin="0,0,8,0" Background="#FFFFFF" BorderBrush="{DynamicResource BorderBrushSoft}" Tag="#FFFFFF" Click="LabelTextColorButton_Click" />
+                                        <Button Width="28" Height="28" MinWidth="28" Padding="0" Margin="0,0,8,0" Background="#202124" BorderBrush="{DynamicResource BorderBrushSoft}" Tag="#202124" Click="LabelTextColorButton_Click" />
+                                        <Button Width="28" Height="28" MinWidth="28" Padding="0" Margin="0,0,8,0" Background="#FBBC04" BorderBrush="{DynamicResource BorderBrushSoft}" Tag="#FBBC04" Click="LabelTextColorButton_Click" />
+                                        <Button Width="28" Height="28" MinWidth="28" Padding="0" Background="#EA4335" BorderBrush="{DynamicResource BorderBrushSoft}" Tag="#EA4335" Click="LabelTextColorButton_Click" />
+                                    </StackPanel>
+
+                                    <TextBlock Grid.Row="3"
+                                               Text="Box"
+                                               Margin="0,10,0,0"
+                                               VerticalAlignment="Center"
+                                               Foreground="{DynamicResource MutedTextBrush}" />
+                                    <StackPanel Grid.Row="3"
+                                                Grid.Column="1"
+                                                Grid.ColumnSpan="2"
+                                                Margin="0,10,0,0"
+                                                Orientation="Horizontal">
+                                        <Button Width="28" Height="28" MinWidth="28" Padding="0" Margin="0,0,8,0" Background="#1A73E8" BorderBrush="{DynamicResource BorderBrushSoft}" Tag="#1A73E8" Click="LabelBackgroundColorButton_Click" />
+                                        <Button Width="28" Height="28" MinWidth="28" Padding="0" Margin="0,0,8,0" Background="#34A853" BorderBrush="{DynamicResource BorderBrushSoft}" Tag="#34A853" Click="LabelBackgroundColorButton_Click" />
+                                        <Button Width="28" Height="28" MinWidth="28" Padding="0" Margin="0,0,8,0" Background="#FBBC04" BorderBrush="{DynamicResource BorderBrushSoft}" Tag="#FBBC04" Click="LabelBackgroundColorButton_Click" />
+                                        <Button Width="28" Height="28" MinWidth="28" Padding="0" Margin="0,0,8,0" Background="#EA4335" BorderBrush="{DynamicResource BorderBrushSoft}" Tag="#EA4335" Click="LabelBackgroundColorButton_Click" />
+                                        <Button Width="28" Height="28" MinWidth="28" Padding="0" Background="#202124" BorderBrush="{DynamicResource BorderBrushSoft}" Tag="#202124" Click="LabelBackgroundColorButton_Click" />
+                                    </StackPanel>
+
+                                    <TextBlock Grid.Row="4"
+                                               Text="Opacity"
+                                               Margin="0,10,0,0"
+                                               VerticalAlignment="Center"
+                                               Foreground="{DynamicResource MutedTextBrush}" />
+                                    <Slider x:Name="LabelBackgroundOpacitySlider"
+                                            Grid.Row="4"
+                                            Grid.Column="1"
+                                            Margin="0,10,10,0"
+                                            Minimum="25"
+                                            Maximum="100"
+                                            ValueChanged="LabelStyle_ValueChanged" />
+                                    <TextBlock Grid.Row="4"
+                                               Grid.Column="2"
+                                               Text="{Binding ElementName=LabelBackgroundOpacitySlider, Path=Value, StringFormat={}{0:0}%}"
+                                               Margin="0,10,0,0"
+                                               VerticalAlignment="Center"
+                                               Foreground="{DynamicResource MutedTextBrush}" />
+                                </Grid>
                                 </Grid>
                             </Grid>
                         </Expander>
@@ -663,8 +814,12 @@
                                     Background="#FFFFFF"
                                     ClipToBounds="True">
                                 <Viewbox Stretch="Uniform">
-                                    <Grid Width="340"
-                                          Height="520">
+                                    <Grid x:Name="WorkspaceImageSurface"
+                                          Width="340"
+                                          Height="520"
+                                          Background="Transparent"
+                                          PreviewMouseMove="WorkspaceImageSurface_PreviewMouseMove"
+                                          PreviewMouseLeftButtonUp="WorkspaceImageSurface_PreviewMouseLeftButtonUp">
                                         <Canvas Width="340"
                                                 Height="520">
                                             <Image Source="{Binding ElementName=StepAssetsListBox, Path=SelectedItem.FullPath}"
@@ -693,11 +848,14 @@
                                                             Height="{Binding WorkspaceHeightValue}"
                                                             BorderBrush="{Binding BorderBrush}"
                                                             BorderThickness="{Binding BorderThickness}"
-                                                            Background="{Binding Background}">
+                                                            Background="{Binding Background}"
+                                                            Cursor="SizeAll"
+                                                            PreviewMouseLeftButtonDown="WorkspaceAnnotation_PreviewMouseLeftButtonDown">
                                                         <TextBlock Text="{Binding Text}"
-                                                                   Foreground="#FFFFFF"
-                                                                   FontSize="13"
-                                                                   FontWeight="SemiBold"
+                                                                   Foreground="{Binding TextBrush}"
+                                                                   FontSize="{Binding WorkspaceFontSize}"
+                                                                   FontWeight="{Binding TextFontWeight}"
+                                                                   FontStyle="{Binding TextFontStyle}"
                                                                    Margin="6,3"
                                                                    TextTrimming="CharacterEllipsis" />
                                                     </Border>

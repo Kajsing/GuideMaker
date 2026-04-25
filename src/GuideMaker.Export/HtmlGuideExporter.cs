@@ -18,14 +18,15 @@ public sealed class HtmlGuideExporter
         builder.AppendLine("<html lang=\"da\">");
         builder.AppendLine("<head>");
         builder.AppendLine("  <meta charset=\"utf-8\">");
+        builder.AppendLine("  <meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\">");
         builder.Append("  <title>").Append(WebUtility.HtmlEncode(document.Metadata.Title)).AppendLine("</title>");
         builder.AppendLine("  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">");
         builder.AppendLine("  <style>");
         builder.AppendLine("    .guide-image-frame { position: relative; display: inline-block; max-width: 100%; }");
-        builder.AppendLine("    .guide-image-frame img { display: block; max-width: 100%; height: auto; }");
-        builder.AppendLine("    .guide-annotation { position: absolute; box-sizing: border-box; }");
+        builder.AppendLine("    .guide-image-frame img { display: block; max-width: 100%; height: auto; position: relative; z-index: 0; }");
+        builder.AppendLine("    .guide-annotation { position: absolute; box-sizing: border-box; z-index: 1; }");
         builder.AppendLine("    .guide-annotation-rectangle { border: 4px solid #fbbc04; background: rgba(251,188,4,.18); }");
-        builder.AppendLine("    .guide-annotation-blur { background: rgba(32,33,36,.62); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }");
+        builder.AppendLine("    .guide-annotation-blur { border: 2px solid #202124; background: #202124; }");
         builder.AppendLine("    .guide-annotation-label { border: 2px solid #1a73e8; background: rgba(26,115,232,.92); color: #fff; padding: 4px 8px; font: 600 14px Segoe UI, sans-serif; }");
         builder.AppendLine("    .guide-annotation-arrow { border-top: 4px solid #ea4335; transform: rotate(-8deg); transform-origin: left center; }");
         builder.AppendLine("    .guide-annotation-arrow::after { content: ''; position: absolute; right: -2px; top: -8px; border-left: 12px solid #ea4335; border-top: 6px solid transparent; border-bottom: 6px solid transparent; }");
@@ -156,7 +157,14 @@ public sealed class HtmlGuideExporter
             .Append(ToPercent(bounds.X)).Append("%;top:")
             .Append(ToPercent(bounds.Y)).Append("%;width:")
             .Append(ToPercent(bounds.Width)).Append("%;height:")
-            .Append(ToPercent(bounds.Height)).Append("%;\">");
+            .Append(ToPercent(bounds.Height)).Append("%;");
+
+        if (annotation.Kind == GuideAnnotationKind.Label)
+        {
+            AppendLabelStyle(builder, annotation);
+        }
+
+        builder.Append("\">");
 
         if (annotation.Kind == GuideAnnotationKind.Label && !string.IsNullOrWhiteSpace(annotation.Text))
         {
@@ -169,6 +177,49 @@ public sealed class HtmlGuideExporter
     private static string ToPercent(double value)
     {
         return (value * 100).ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+    }
+
+    private static void AppendLabelStyle(StringBuilder builder, GuideAnnotation annotation)
+    {
+        var style = annotation.Style ?? new GuideAnnotationStyle();
+        builder.Append("font-size:")
+            .Append(style.FontSize.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture))
+            .Append("px;font-weight:")
+            .Append(style.IsBold ? "700" : "400")
+            .Append(";font-style:")
+            .Append(style.IsItalic ? "italic" : "normal")
+            .Append(";color:")
+            .Append(ToCssColor(style.TextColor))
+            .Append(";background:")
+            .Append(ToCssRgba(style.BackgroundColor, style.BackgroundOpacity))
+            .Append(";border-color:")
+            .Append(ToCssColor(style.BackgroundColor))
+            .Append(';');
+    }
+
+    private static string ToCssColor(string color)
+    {
+        return IsHexColor(color) ? color : "#FFFFFF";
+    }
+
+    private static string ToCssRgba(string color, double opacity)
+    {
+        if (!IsHexColor(color))
+        {
+            color = "#1A73E8";
+        }
+
+        var red = Convert.ToInt32(color.Substring(1, 2), 16);
+        var green = Convert.ToInt32(color.Substring(3, 2), 16);
+        var blue = Convert.ToInt32(color.Substring(5, 2), 16);
+        return string.Create(
+            System.Globalization.CultureInfo.InvariantCulture,
+            $"rgba({red},{green},{blue},{Math.Clamp(opacity, 0, 1):0.###})");
+    }
+
+    private static bool IsHexColor(string color)
+    {
+        return color.Length == 7 && color[0] == '#' && color.Skip(1).All(Uri.IsHexDigit);
     }
 
     private static string NormalizeAssetPath(string value)

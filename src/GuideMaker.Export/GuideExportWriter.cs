@@ -11,17 +11,23 @@ public sealed class GuideExportWriter
     private readonly MarkdownGuideExporter markdownExporter;
     private readonly HtmlGuideExporter htmlExporter;
     private readonly PdfGuideExporter pdfExporter;
+    private readonly ExportAssetRenderer assetRenderer;
 
     public GuideExportWriter()
-        : this(new MarkdownGuideExporter(), new HtmlGuideExporter(), new PdfGuideExporter())
+        : this(new MarkdownGuideExporter(), new HtmlGuideExporter(), new PdfGuideExporter(), new ExportAssetRenderer())
     {
     }
 
-    public GuideExportWriter(MarkdownGuideExporter markdownExporter, HtmlGuideExporter htmlExporter, PdfGuideExporter pdfExporter)
+    public GuideExportWriter(
+        MarkdownGuideExporter markdownExporter,
+        HtmlGuideExporter htmlExporter,
+        PdfGuideExporter pdfExporter,
+        ExportAssetRenderer assetRenderer)
     {
         this.markdownExporter = markdownExporter;
         this.htmlExporter = htmlExporter;
         this.pdfExporter = pdfExporter;
+        this.assetRenderer = assetRenderer;
     }
 
     public async Task<GuideExportResult> ExportAsync(
@@ -38,12 +44,13 @@ public sealed class GuideExportWriter
         var markdownPath = Path.Combine(exportsDirectory, MarkdownFileName);
         var htmlPath = Path.Combine(exportsDirectory, HtmlFileName);
         var pdfPath = Path.Combine(exportsDirectory, PdfFileName);
+        var exportDocument = assetRenderer.RenderExportAssets(projectDirectory, exportsDirectory, document);
 
-        await File.WriteAllTextAsync(markdownPath, markdownExporter.Export(document, "../"), cancellationToken)
+        await File.WriteAllTextAsync(markdownPath, markdownExporter.Export(exportDocument), cancellationToken)
             .ConfigureAwait(false);
-        await File.WriteAllTextAsync(htmlPath, htmlExporter.Export(document, "../"), cancellationToken)
+        await File.WriteAllTextAsync(htmlPath, htmlExporter.Export(exportDocument), cancellationToken)
             .ConfigureAwait(false);
-        await File.WriteAllBytesAsync(pdfPath, pdfExporter.Export(document, projectDirectory), cancellationToken)
+        await File.WriteAllBytesAsync(pdfPath, pdfExporter.Export(exportDocument, exportsDirectory), cancellationToken)
             .ConfigureAwait(false);
 
         return new GuideExportResult

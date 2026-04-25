@@ -35,10 +35,13 @@ public partial class MainWindow : Window
     private List<GuideAsset> currentAssets = [];
     private Guid? selectedAssetId;
     private Guid? selectedAnnotationId;
+    private Guid? draggedAnnotationId;
+    private System.Windows.Point annotationDragOffset;
     private bool isDarkMode;
     private bool isDirty;
     private bool isUpdatingUi;
     private bool isChangingAssetSelection;
+    private bool isDraggingAnnotation;
     private bool isRefreshingAssets;
     private bool isRefreshingAnnotations;
     private bool closeAlreadyConfirmed;
@@ -377,6 +380,16 @@ public partial class MainWindow : Window
         SetStatus("Annotation removed from selected image.");
     }
 
+    private void MoveAnnotationUpButton_Click(object sender, RoutedEventArgs e)
+    {
+        MoveSelectedAnnotation(-1);
+    }
+
+    private void MoveAnnotationDownButton_Click(object sender, RoutedEventArgs e)
+    {
+        MoveSelectedAnnotation(1);
+    }
+
     private void InsertImageReferenceButton_Click(object sender, RoutedEventArgs e)
     {
         var selectedAsset = GetSelectedEditableAsset();
@@ -544,6 +557,130 @@ public partial class MainWindow : Window
                 Height = height
             }
         });
+    }
+
+    private void LabelStyle_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (isUpdatingUi)
+        {
+            return;
+        }
+
+        UpdateSelectedLabelStyle(style => style with
+        {
+            FontSize = Math.Clamp(LabelFontSizeSlider.Value, 8, 36),
+            BackgroundOpacity = Math.Clamp(LabelBackgroundOpacitySlider.Value / 100, 0.25, 1)
+        });
+    }
+
+    private void LabelStyleToggle_Click(object sender, RoutedEventArgs e)
+    {
+        if (isUpdatingUi)
+        {
+            return;
+        }
+
+        UpdateSelectedLabelStyle(style => style with
+        {
+            IsBold = LabelBoldToggle.IsChecked == true,
+            IsItalic = LabelItalicToggle.IsChecked == true
+        });
+    }
+
+    private void LabelTextColorButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { Tag: string color })
+        {
+            UpdateSelectedLabelStyle(style => style with { TextColor = color });
+        }
+    }
+
+    private void LabelBackgroundColorButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { Tag: string color })
+        {
+            UpdateSelectedLabelStyle(style => style with { BackgroundColor = color });
+        }
+    }
+
+    private void WorkspaceAnnotation_PreviewMouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: EditableAnnotationPreview preview })
+        {
+            return;
+        }
+
+        var annotation = GetSelectedStep()?.Annotations.FirstOrDefault(candidate => candidate.Id == preview.Id);
+        if (annotation is null || selectedAssetId != annotation.AssetId)
+        {
+            return;
+        }
+
+        selectedAnnotationId = annotation.Id;
+        RefreshSelectedAssetAnnotations(annotation.Id);
+        LoadSelectedAnnotationIntoEditor();
+        UpdateUiState();
+
+        var pointer = e.GetPosition(WorkspaceImageSurface);
+        annotationDragOffset = new System.Windows.Point(pointer.X - preview.WorkspaceX, pointer.Y - preview.WorkspaceY);
+        draggedAnnotationId = annotation.Id;
+        isDraggingAnnotation = true;
+        WorkspaceImageSurface.CaptureMouse();
+        e.Handled = true;
+    }
+
+    private void WorkspaceImageSurface_PreviewMouseMove(object sender, System.Windows.Input.MouseEventArgs e)
+    {
+        if (!isDraggingAnnotation || draggedAnnotationId is not { } annotationId)
+        {
+            return;
+        }
+
+        if (e.LeftButton != System.Windows.Input.MouseButtonState.Pressed)
+        {
+            EndAnnotationDrag();
+            return;
+        }
+
+        var selectedAsset = GetSelectedEditableAsset();
+        var selectedStep = GetSelectedStep();
+        var annotation = selectedStep?.Annotations.FirstOrDefault(candidate => candidate.Id == annotationId);
+        if (selectedAsset is null || annotation is null || selectedAsset.WorkspaceImageWidth <= 0 || selectedAsset.WorkspaceImageHeight <= 0)
+        {
+            EndAnnotationDrag();
+            return;
+        }
+
+        var pointer = e.GetPosition(WorkspaceImageSurface);
+        var x = (pointer.X - annotationDragOffset.X - selectedAsset.WorkspaceImageX) / selectedAsset.WorkspaceImageWidth;
+        var y = (pointer.Y - annotationDragOffset.Y - selectedAsset.WorkspaceImageY) / selectedAsset.WorkspaceImageHeight;
+
+        var updatedAnnotation = annotation with
+        {
+            Bounds = new AnnotationBounds
+            {
+                X = Math.Clamp(x, 0, Math.Max(0, 1 - annotation.Bounds.Width)),
+                Y = Math.Clamp(y, 0, Math.Max(0, 1 - annotation.Bounds.Height)),
+                Width = annotation.Bounds.Width,
+                Height = annotation.Bounds.Height
+            }
+        };
+
+        UpdateSelectedAnnotation(updatedAnnotation, reloadEditor: false);
+        LoadDraggedAnnotationPositionIntoEditor(updatedAnnotation.Bounds);
+
+        e.Handled = true;
+    }
+
+    private void WorkspaceImageSurface_PreviewMouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (!isDraggingAnnotation)
+        {
+            return;
+        }
+
+        EndAnnotationDrag();
+        e.Handled = true;
     }
 
     private async void Window_Closing(object? sender, CancelEventArgs e)
@@ -818,12 +955,19 @@ public partial class MainWindow : Window
         AddArrowButton.IsEnabled = isEnabled;
         AddRedactButton.IsEnabled = isEnabled;
         RemoveAnnotationButton.IsEnabled = isEnabled;
+        MoveAnnotationUpButton.IsEnabled = isEnabled;
+        MoveAnnotationDownButton.IsEnabled = isEnabled;
         AnnotationListBox.IsEnabled = isEnabled;
         AnnotationTextBox.IsEnabled = isEnabled;
         AnnotationXSlider.IsEnabled = isEnabled;
         AnnotationYSlider.IsEnabled = isEnabled;
         AnnotationWidthSlider.IsEnabled = isEnabled;
         AnnotationHeightSlider.IsEnabled = isEnabled;
+        LabelStylePanel.IsEnabled = isEnabled;
+        LabelFontSizeSlider.IsEnabled = isEnabled;
+        LabelBoldToggle.IsEnabled = isEnabled;
+        LabelItalicToggle.IsEnabled = isEnabled;
+        LabelBackgroundOpacitySlider.IsEnabled = isEnabled;
     }
 
     private void UpdateUiState()
@@ -848,12 +992,15 @@ public partial class MainWindow : Window
         AddArrowButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset;
         AddRedactButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset;
         RemoveAnnotationButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset && selectedAssetAnnotations.Count > 0;
+        MoveAnnotationUpButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset && CanMoveSelectedAnnotation(-1);
+        MoveAnnotationDownButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset && CanMoveSelectedAnnotation(1);
         AnnotationListBox.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset;
         AnnotationTextBox.IsEnabled = hasProject && hasSelectedAnnotation && GetSelectedAnnotation()?.Kind == GuideAnnotationKind.Label;
         AnnotationXSlider.IsEnabled = hasProject && hasSelectedAnnotation;
         AnnotationYSlider.IsEnabled = hasProject && hasSelectedAnnotation;
         AnnotationWidthSlider.IsEnabled = hasProject && hasSelectedAnnotation;
         AnnotationHeightSlider.IsEnabled = hasProject && hasSelectedAnnotation;
+        LabelStylePanel.IsEnabled = hasProject && GetSelectedAnnotation()?.Kind == GuideAnnotationKind.Label;
         GuideTitleTextBox.IsEnabled = hasProject;
         StepTitleTextBox.IsEnabled = hasSelectedStep;
         StepBodyTextBox.IsEnabled = hasSelectedStep;
@@ -914,6 +1061,7 @@ public partial class MainWindow : Window
             Kind = kind,
             AssetId = selectedAsset.Id,
             Text = text,
+            Style = kind == GuideAnnotationKind.Label ? new GuideAnnotationStyle() : null,
             Bounds = CreateDefaultBounds(kind, selectedStep.Annotations.Count(annotation => annotation.AssetId == selectedAsset.Id))
         };
 
@@ -924,6 +1072,64 @@ public partial class MainWindow : Window
         RefreshSelectedAssetAnnotations(annotation.Id);
         MarkDirty();
         SetStatus($"{kind} annotation added to selected image.");
+    }
+
+    private void UpdateSelectedLabelStyle(Func<GuideAnnotationStyle, GuideAnnotationStyle> update)
+    {
+        if (GetSelectedAnnotation() is not { Kind: GuideAnnotationKind.Label } annotation)
+        {
+            return;
+        }
+
+        UpdateSelectedAnnotation(annotation with
+        {
+            Style = update(GetEffectiveStyle(annotation))
+        }, reloadEditor: false);
+    }
+
+    private bool CanMoveSelectedAnnotation(int direction)
+    {
+        if (GetSelectedStep() is not { } selectedStep || selectedAssetId is not { } assetId || selectedAnnotationId is not { } annotationId)
+        {
+            return false;
+        }
+
+        var assetAnnotations = selectedStep.Annotations
+            .Where(annotation => annotation.AssetId == assetId)
+            .ToList();
+        var selectedIndex = assetAnnotations.FindIndex(annotation => annotation.Id == annotationId);
+        var targetIndex = selectedIndex + direction;
+        return selectedIndex >= 0 && targetIndex >= 0 && targetIndex < assetAnnotations.Count;
+    }
+
+    private void MoveSelectedAnnotation(int direction)
+    {
+        var selectedStep = GetSelectedStep();
+        if (selectedStep is null || selectedAssetId is not { } assetId || selectedAnnotationId is not { } annotationId)
+        {
+            return;
+        }
+
+        var assetAnnotationIndexes = selectedStep.Annotations
+            .Select((annotation, index) => new { Annotation = annotation, Index = index })
+            .Where(item => item.Annotation.AssetId == assetId)
+            .ToList();
+        var selectedIndex = assetAnnotationIndexes.FindIndex(item => item.Annotation.Id == annotationId);
+        var targetIndex = selectedIndex + direction;
+        if (selectedIndex < 0 || targetIndex < 0 || targetIndex >= assetAnnotationIndexes.Count)
+        {
+            return;
+        }
+
+        var sourceListIndex = assetAnnotationIndexes[selectedIndex].Index;
+        var targetListIndex = assetAnnotationIndexes[targetIndex].Index;
+        (selectedStep.Annotations[sourceListIndex], selectedStep.Annotations[targetListIndex]) =
+            (selectedStep.Annotations[targetListIndex], selectedStep.Annotations[sourceListIndex]);
+
+        RefreshSelectedStepAssets(assetId);
+        RefreshSelectedAssetAnnotations(annotationId);
+        MarkDirty();
+        SetStatus(direction < 0 ? "Annotation moved up." : "Annotation moved down.");
     }
 
     private static AnnotationBounds CreateDefaultBounds(GuideAnnotationKind kind, int existingAnnotationCount)
@@ -1089,6 +1295,7 @@ public partial class MainWindow : Window
             AnnotationYSlider.Value = annotation.Bounds.Y * 100;
             AnnotationWidthSlider.Value = annotation.Bounds.Width * 100;
             AnnotationHeightSlider.Value = annotation.Bounds.Height * 100;
+            LoadLabelStyleIntoEditor(annotation);
         }
         else
         {
@@ -1101,6 +1308,7 @@ public partial class MainWindow : Window
             AnnotationYSlider.Maximum = 100;
             AnnotationWidthSlider.Maximum = 100;
             AnnotationHeightSlider.Maximum = 100;
+            LoadLabelStyleIntoEditor(null);
         }
 
         isUpdatingUi = false;
@@ -1112,6 +1320,57 @@ public partial class MainWindow : Window
         AnnotationYSlider.Maximum = Math.Max(0, (1 - bounds.Height) * 100);
         AnnotationWidthSlider.Maximum = Math.Max(1, (1 - bounds.X) * 100);
         AnnotationHeightSlider.Maximum = Math.Max(1, (1 - bounds.Y) * 100);
+    }
+
+    private void LoadLabelStyleIntoEditor(GuideAnnotation? annotation)
+    {
+        var style = annotation?.Kind == GuideAnnotationKind.Label
+            ? GetEffectiveStyle(annotation)
+            : new GuideAnnotationStyle();
+        LabelFontSizeSlider.Value = style.FontSize;
+        LabelBoldToggle.IsChecked = style.IsBold;
+        LabelItalicToggle.IsChecked = style.IsItalic;
+        LabelBackgroundOpacitySlider.Value = style.BackgroundOpacity * 100;
+    }
+
+    private void LoadDraggedAnnotationPositionIntoEditor(AnnotationBounds bounds)
+    {
+        isUpdatingUi = true;
+        AnnotationXSlider.Maximum = Math.Max(0, (1 - bounds.Width) * 100);
+        AnnotationYSlider.Maximum = Math.Max(0, (1 - bounds.Height) * 100);
+        AnnotationXSlider.Value = bounds.X * 100;
+        AnnotationYSlider.Value = bounds.Y * 100;
+        isUpdatingUi = false;
+    }
+
+    private void EndAnnotationDrag()
+    {
+        isDraggingAnnotation = false;
+        draggedAnnotationId = null;
+        WorkspaceImageSurface.ReleaseMouseCapture();
+    }
+
+    private static GuideAnnotationStyle GetEffectiveStyle(GuideAnnotation annotation)
+    {
+        return annotation.Style ?? new GuideAnnotationStyle();
+    }
+
+    private static SolidColorBrush CreateBrush(string color, double opacity = 1)
+    {
+        try
+        {
+            var parsedColor = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color);
+            parsedColor.A = (byte)Math.Round(Math.Clamp(opacity, 0, 1) * 255);
+            return new SolidColorBrush(parsedColor);
+        }
+        catch (FormatException)
+        {
+            return new SolidColorBrush(System.Windows.Media.Color.FromArgb(
+                (byte)Math.Round(Math.Clamp(opacity, 0, 1) * 255),
+                26,
+                115,
+                232));
+        }
     }
 
     private static MemoryStream EncodePng(BitmapSource image)
@@ -1391,6 +1650,8 @@ public partial class MainWindow : Window
 
     public sealed record EditableAnnotationPreview
     {
+        public required Guid Id { get; init; }
+
         public required double ThumbX { get; init; }
 
         public required double ThumbY { get; init; }
@@ -1419,6 +1680,16 @@ public partial class MainWindow : Window
 
         public required System.Windows.Media.Brush Background { get; init; }
 
+        public required System.Windows.Media.Brush TextBrush { get; init; }
+
+        public required double ThumbFontSize { get; init; }
+
+        public required double WorkspaceFontSize { get; init; }
+
+        public required FontWeight TextFontWeight { get; init; }
+
+        public required System.Windows.FontStyle TextFontStyle { get; init; }
+
         public required Thickness BorderThickness { get; init; }
 
         public string? Text { get; init; }
@@ -1429,8 +1700,10 @@ public partial class MainWindow : Window
             PreviewGeometry editorGeometry,
             PreviewGeometry workspaceGeometry)
         {
+            var style = GetEffectiveStyle(annotation);
             return new EditableAnnotationPreview
             {
+                Id = annotation.Id,
                 ThumbX = thumbGeometry.X + annotation.Bounds.X * thumbGeometry.Width,
                 ThumbY = thumbGeometry.Y + annotation.Bounds.Y * thumbGeometry.Height,
                 ThumbWidth = annotation.Bounds.Width * thumbGeometry.Width,
@@ -1452,11 +1725,22 @@ public partial class MainWindow : Window
                 },
                 Background = annotation.Kind switch
                 {
-                    GuideAnnotationKind.Label => new SolidColorBrush(System.Windows.Media.Color.FromArgb(230, 26, 115, 232)),
-                    GuideAnnotationKind.Blur => new SolidColorBrush(System.Windows.Media.Color.FromArgb(245, 32, 33, 36)),
+                    GuideAnnotationKind.Label => CreateBrush(style.BackgroundColor, style.BackgroundOpacity),
+                    GuideAnnotationKind.Blur => new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 32, 33, 36)),
                     GuideAnnotationKind.Arrow => System.Windows.Media.Brushes.Red,
                     _ => new SolidColorBrush(System.Windows.Media.Color.FromArgb(45, 251, 188, 4))
                 },
+                TextBrush = annotation.Kind == GuideAnnotationKind.Label
+                    ? CreateBrush(style.TextColor)
+                    : System.Windows.Media.Brushes.White,
+                ThumbFontSize = annotation.Kind == GuideAnnotationKind.Label ? Math.Max(6, style.FontSize * 0.7) : 10,
+                WorkspaceFontSize = annotation.Kind == GuideAnnotationKind.Label ? style.FontSize : 13,
+                TextFontWeight = annotation.Kind == GuideAnnotationKind.Label && style.IsBold
+                    ? FontWeights.Bold
+                    : FontWeights.Normal,
+                TextFontStyle = annotation.Kind == GuideAnnotationKind.Label && style.IsItalic
+                    ? FontStyles.Italic
+                    : FontStyles.Normal,
                 BorderThickness = annotation.Kind switch
                 {
                     GuideAnnotationKind.Arrow => new Thickness(0, 2, 0, 0),

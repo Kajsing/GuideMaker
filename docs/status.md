@@ -54,6 +54,15 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | 2026-04-25 | Annotation selection state model refactored | Asset selection still snapped back when Annotations was open | Image and annotation selection now use explicit IDs as source of truth instead of WPF list selection |
 | 2026-04-25 | Asset selection moved to preview mouse-down | Focus-loss events from annotation controls could still run before image selection changed | Image clicks now apply selected asset before annotation text/slider events can refresh selection |
 | 2026-04-25 | Image list hitbox stabilized | Layout movement during image selection could let the same click finish on another row | Image rows now have fixed height and handled preview clicks |
+| 2026-04-25 | Workspace annotation drag added | Sliders are too clunky for practical placement | Existing annotations can be dragged in the Image workspace and stored as percentage bounds |
+| 2026-04-25 | Annotation ordering controls added | Authors need to choose which mark appears above another | Selected image annotations can be moved up or down in render order |
+| 2026-04-25 | Drag no longer reloads size controls | Width and height controls appeared to move while dragging annotations | Drag updates X/Y only while preserving width and height slider state |
+| 2026-04-25 | Annotation ordering buttons compacted | Up/Down text buttons cluttered the add tools | Ordering controls are now arrow buttons beside the annotation list |
+| 2026-04-25 | HTML redact preview made visible in WebBrowser | Redact overlays existed in `preview.html` but did not render visibly in WPF WebBrowser | HTML export now uses IE/Edge compatibility metadata, z-index, and solid redact fallback styling |
+| 2026-04-25 | Export assets are rendered with annotations burned in | Markdown and HTML should not rely on fragile overlay CSS, and redaction must not leave original pixels visible in exported images | Exports now generate image files under `exports/assets` and Markdown, HTML, and PDF use those generated images |
+| 2026-04-25 | Redaction made fully opaque | Semi-transparent redaction still revealed underlying text in preview | Redaction now renders as solid dark masking in app preview, HTML fallback, and generated export images |
+| 2026-04-25 | Basic label styling added | Labels need size and color controls without turning the MVP into a full document editor | Label annotations now support size, bold, italic, text color, box color, and box opacity |
+| 2026-04-25 | Advanced label styling deferred to v2 | Font family, presets, borders, shadows, and templates would expand scope | Keep M8 focused on practical label controls and export consistency |
 
 ## Open Blockers
 
@@ -115,6 +124,18 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | 2026-04-25 | `git diff --check` | Pass | Preview mouse-down selection fix whitespace check clean |
 | 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Preview mouse-down selection fix build; Release tests passed; 24 tests passed |
 | 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Image list hitbox stabilization build; Release tests passed; 24 tests passed |
+| 2026-04-25 | `git diff --check` | Pass | Workspace annotation drag whitespace check clean |
+| 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Workspace annotation drag build; Release tests passed; 24 tests passed |
+| 2026-04-25 | `git diff --check` | Pass | Annotation ordering and drag-size fix whitespace check clean |
+| 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Annotation ordering and drag-size fix build; Release tests passed; 24 tests passed |
+| 2026-04-25 | `git diff --check` | Pass | Compact annotation ordering buttons whitespace check clean |
+| 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Compact annotation ordering buttons build; Release tests passed; 24 tests passed |
+| 2026-04-25 | `git diff --check` | Pass | HTML redact preview styling whitespace check clean |
+| 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | HTML redact preview styling build; Release tests passed; 24 tests passed |
+| 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Rendered export assets build; Release tests passed; 25 tests passed |
+| 2026-04-25 | `git diff --check` | Pass | Opaque redaction whitespace check clean |
+| 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Opaque redaction build; Release tests passed; 25 tests passed |
+| 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Basic label styling build; Release tests passed; 25 tests passed |
 
 ## Known Risks
 
@@ -125,7 +146,7 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | Scope creep | High | Keep non-goals explicit in `docs/spec.md` and `AGENTS.md` |
 | Dark mode placement | Low | Move the topbar toggle into Settings when a Settings surface exists |
 | Image display sizing model | Medium | Introduce per-step image reference metadata before implementing size controls |
-| Annotation placement still needs richer direct manipulation | Medium | Initial select/edit/bounds controls are added; direct drag handles can follow if needed |
+| Annotation placement still needs richer direct manipulation | Medium | Basic drag-to-move is added; resize handles and rotate controls remain |
 | Annotation editor UI is getting crowded | Medium | Add hide/show or collapsible surfaces during M8 hardening |
 
 ## Known M8 Bugs
@@ -134,7 +155,7 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 |---|---|---|
 | Asset selection snaps back when Annotations is open | High | Refactored so explicit asset/annotation IDs are the source of truth instead of WPF list selection. Needs user smoke test with the annotation panel expanded. |
 | Annotation expander arrow points the wrong way | Low | The hide/show arrow direction is visually confusing and should be corrected or replaced with clearer show/hide affordance. |
-| Redact is not true blur in the app workspace | Medium | Current UI preview uses a dark redact overlay. HTML may use CSS blur where supported, but MVP hardening still needs hard redaction/blur of exported pixels. |
+| Redact uses solid burn-in, not blur | Medium | Exported Markdown, HTML, and PDF now use generated images with annotations burned in. Redaction is solid dark masking; true blur can be added later if needed. |
 | Annotation percentage sliders are confusing | Medium | X/Y/Width/Height values interact awkwardly and should be redesigned or replaced with direct manipulation handles. |
 | Annotation controls are still clunky | Medium | Current compact buttons are better grouped but should become a cleaner tool strip or collapsible tool surface. |
 
