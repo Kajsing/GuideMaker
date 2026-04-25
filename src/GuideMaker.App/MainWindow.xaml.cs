@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -18,6 +20,9 @@ namespace GuideMaker.App;
 
 public partial class MainWindow : Window
 {
+    private const int WhMouseLl = 14;
+    private const int WmLButtonUp = 0x0202;
+
     private readonly GuideProjectStore projectStore = new();
     private readonly GuideAssetFileStore assetFileStore = new();
     private readonly GuideExportWriter exportWriter = new();
@@ -47,7 +52,13 @@ public partial class MainWindow : Window
     private bool isDraggingAnnotation;
     private bool isRefreshingAssets;
     private bool isRefreshingAnnotations;
+    private bool isFollowAlongCaptureActive;
+    private bool isFollowAlongCaptureSaving;
     private bool closeAlreadyConfirmed;
+    private int followAlongCaptureCount;
+    private IntPtr followAlongMouseHookHandle = IntPtr.Zero;
+    private LowLevelMouseProc? followAlongMouseProc;
+    private DateTimeOffset lastFollowAlongCaptureAt = DateTimeOffset.MinValue;
 
     public MainWindow()
     {
@@ -319,6 +330,120 @@ public partial class MainWindow : Window
                 Activate();
             }
         }).ConfigureAwait(true);
+    }
+
+    private void FollowAlongCaptureButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (isFollowAlongCaptureActive)
+        {
+            StopFollowAlongCapture("Follow along capture stopped.");
+            WindowState = WindowState.Normal;
+            Activate();
+            return;
+        }
+
+        StartFollowAlongCapture();
+    }
+
+    private void StartFollowAlongCapture()
+    {
+        if (currentProject is null || GetSelectedStep() is null)
+        {
+            SetStatus("Open a guide and select a step before starting follow along.");
+            return;
+        }
+
+        followAlongMouseProc ??= FollowAlongMouseHookCallback;
+        followAlongMouseHookHandle = SetWindowsHookEx(
+            WhMouseLl,
+            followAlongMouseProc,
+            GetCurrentModuleHandle(),
+            0);
+
+        if (followAlongMouseHookHandle == IntPtr.Zero)
+        {
+            SetStatus("Could not start follow along capture.");
+            return;
+        }
+
+        followAlongCaptureCount = 0;
+        lastFollowAlongCaptureAt = DateTimeOffset.MinValue;
+        isFollowAlongCaptureActive = true;
+        FollowAlongCaptureButton.Content = "Stop follow";
+        SetStatus("Follow along capture started. Restore GuideMaker to stop.");
+        WindowState = WindowState.Minimized;
+    }
+
+    private void StopFollowAlongCapture(string status)
+    {
+        if (!isFollowAlongCaptureActive)
+        {
+            return;
+        }
+
+        if (followAlongMouseHookHandle != IntPtr.Zero)
+        {
+            UnhookWindowsHookEx(followAlongMouseHookHandle);
+            followAlongMouseHookHandle = IntPtr.Zero;
+        }
+
+        isFollowAlongCaptureActive = false;
+        isFollowAlongCaptureSaving = false;
+        FollowAlongCaptureButton.Content = "Follow along";
+        SetStatus($"{status} {followAlongCaptureCount} screenshot(s) captured.");
+        UpdateUiState();
+    }
+
+    private IntPtr FollowAlongMouseHookCallback(int nCode, IntPtr wParam, IntPtr lParam)
+    {
+        if (nCode >= 0 && wParam == WmLButtonUp && isFollowAlongCaptureActive)
+        {
+            Dispatcher.BeginInvoke(CaptureFollowAlongScreenshotAsync, DispatcherPriority.Background);
+        }
+
+        return CallNextHookEx(followAlongMouseHookHandle, nCode, wParam, lParam);
+    }
+
+    private async Task CaptureFollowAlongScreenshotAsync()
+    {
+        if (!isFollowAlongCaptureActive ||
+            isFollowAlongCaptureSaving ||
+            currentProject is null ||
+            GetSelectedStep() is not { } selectedStep ||
+            WindowState != WindowState.Minimized)
+        {
+            return;
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        if (now - lastFollowAlongCaptureAt < TimeSpan.FromMilliseconds(350))
+        {
+            return;
+        }
+
+        isFollowAlongCaptureSaving = true;
+        lastFollowAlongCaptureAt = now;
+
+        try
+        {
+            await using var stream = CaptureVirtualScreenPng();
+            var asset = await assetFileStore.SavePngAsync(
+                    currentProject,
+                    $"follow {DateTime.Now:yyyyMMdd-HHmmss-fff}",
+                    stream)
+                .ConfigureAwait(true);
+            AttachAssetToStep(selectedStep, asset);
+            followAlongCaptureCount++;
+            SetStatus($"Follow along captured {followAlongCaptureCount} screenshot(s). Restore GuideMaker to stop.");
+        }
+        catch
+        {
+            SetStatus("Follow along screenshot failed.");
+        }
+        finally
+        {
+            isFollowAlongCaptureSaving = false;
+        }
     }
 
     private void RemoveImageButton_Click(object sender, RoutedEventArgs e)
@@ -764,8 +889,18 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
+    private void Window_StateChanged(object? sender, EventArgs e)
+    {
+        if (isFollowAlongCaptureActive && WindowState != WindowState.Minimized)
+        {
+            StopFollowAlongCapture("Follow along capture stopped.");
+        }
+    }
+
     private async void Window_Closing(object? sender, CancelEventArgs e)
     {
+        StopFollowAlongCapture("Follow along capture stopped.");
+
         if (closeAlreadyConfirmed || !isDirty)
         {
             return;
@@ -1035,6 +1170,7 @@ public partial class MainWindow : Window
         ImportImageButton.IsEnabled = isEnabled;
         PasteImageButton.IsEnabled = isEnabled;
         CaptureScreenshotButton.IsEnabled = isEnabled;
+        FollowAlongCaptureButton.IsEnabled = isEnabled;
         AttachPoolImageButton.IsEnabled = isEnabled;
         ImagePoolListBox.IsEnabled = isEnabled;
         InsertImageReferenceButton.IsEnabled = isEnabled;
@@ -1080,6 +1216,8 @@ public partial class MainWindow : Window
         ImportImageButton.IsEnabled = hasProject && hasSelectedStep;
         PasteImageButton.IsEnabled = hasProject && hasSelectedStep;
         CaptureScreenshotButton.IsEnabled = hasProject && hasSelectedStep;
+        FollowAlongCaptureButton.IsEnabled = hasProject && hasSelectedStep;
+        FollowAlongCaptureButton.Content = isFollowAlongCaptureActive ? "Stop follow" : "Follow along";
         AttachPoolImageButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedPoolAsset;
         ImagePoolListBox.IsEnabled = hasProject;
         InsertImageReferenceButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset;
@@ -1605,6 +1743,29 @@ public partial class MainWindow : Window
         stream.Position = 0;
         return stream;
     }
+
+    private static IntPtr GetCurrentModuleHandle()
+    {
+        var moduleName = Process.GetCurrentProcess().MainModule?.ModuleName;
+        return string.IsNullOrWhiteSpace(moduleName)
+            ? IntPtr.Zero
+            : GetModuleHandle(moduleName);
+    }
+
+    private delegate IntPtr LowLevelMouseProc(int nCode, IntPtr wParam, IntPtr lParam);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern IntPtr SetWindowsHookEx(int idHook, LowLevelMouseProc lpfn, IntPtr hMod, uint dwThreadId);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool UnhookWindowsHookEx(IntPtr hhk);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+    private static extern IntPtr GetModuleHandle(string? lpModuleName);
 
     private void SetStatus(string message)
     {

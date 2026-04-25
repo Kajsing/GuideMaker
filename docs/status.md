@@ -74,6 +74,7 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | 2026-04-25 | Preview uses rendered export assets | Preview and export should not disagree about image refs, crop, or burned-in annotations | `preview.html` now renders through the export asset renderer before HTML generation |
 | 2026-04-26 | Step image refs render only when referenced | Attaching a pool image to a step should make it available, not automatically print it in the guide | Steps with image refs now export only images explicitly placed with `[[image:...]]`; legacy `AssetIds` fallback remains readable |
 | 2026-04-26 | Basic crop editing added for step images | Follow-along and pool reuse need non-destructive crops per step | Selected step images can store crop bounds; the app previews the cropped image and export renders cropped generated assets without changing originals |
+| 2026-04-26 | Initial Follow Along Capture added | MVP needs screenshot capture while the user performs the workflow being documented | A selected step can start follow-along mode; GuideMaker minimizes, mouse clicks capture screenshots into the pool and attach them to the step, and restoring the app stops capture |
 
 ## Open Blockers
 
@@ -93,7 +94,7 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | 5 Images and screenshot capture | Complete | Import, paste, capture, attach, and preview wired |
 | 6 Basic annotation | Complete | Highlight, label, arrow, redaction overlays wired |
 | 7 PDF export and preview | Complete | PDFsharp export, local preview, and export warning added |
-| 8 MVP hardening | In progress | Image pool model/storage/export and app save/load bridge slices are in place; visible image pool UI and basic crop editing are added. Follow-along capture, annotation editor polish, rotate controls, and final polish remain |
+| 8 MVP hardening | In progress | Image pool model/storage/export and app save/load bridge slices are in place; visible image pool UI, basic crop editing, and initial Follow Along Capture are added. Annotation editor polish, rotate controls, and final polish remain |
 
 ## Validation Log
 
@@ -165,6 +166,8 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | 2026-04-26 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Explicit image reference export build; Release tests passed; 31 tests passed |
 | 2026-04-26 | `git diff --check` | Pass | Basic step image crop UI whitespace check clean |
 | 2026-04-26 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Basic step image crop UI build; Release tests passed; 32 tests passed |
+| 2026-04-26 | `git diff --check` | Pass | Initial Follow Along Capture whitespace check clean |
+| 2026-04-26 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Initial Follow Along Capture build; Release tests passed; 32 tests passed |
 
 ## Known Risks
 
@@ -180,6 +183,7 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | Annotation editor UI is getting crowded | Medium | Add hide/show or collapsible surfaces during M8 hardening |
 | Image list navigation is cramped | Medium | Rework Images area during image pool UI so three or more images are easy to scan and the scrollbar feels natural |
 | Image workspace does not fit large images well | Medium | Make the right-side Image workspace fit the available pane better before adding crop/resize handles |
+| Follow Along Capture needs desktop smoke testing | Medium | Win32 mouse hooks and minimization behavior must be verified manually on the target Windows machine |
 
 ## Known M8 Bugs
 
@@ -195,7 +199,7 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 
 ## Next Recommended Step
 
-Smoke test the visible image pool and basic crop editor, then continue Milestone 8 with Follow Along Capture on top of the pool.
+Smoke test visible image pool, basic crop editing, and initial Follow Along Capture on a real guide project.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1

@@ -8,7 +8,8 @@
         MinWidth="1180"
         FontFamily="Segoe UI"
         Background="#F8FAFD"
-        Closing="Window_Closing">
+        Closing="Window_Closing"
+        StateChanged="Window_StateChanged">
     <Window.Resources>
         <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF" />
         <SolidColorBrush x:Key="CanvasBrush" Color="#F8FAFD" />
@@ -324,6 +325,11 @@
                                 MinWidth="88"
                                 Margin="0,0,8,8"
                                 Click="CaptureScreenshotButton_Click" />
+                            <Button x:Name="FollowAlongCaptureButton"
+                                Content="Follow along"
+                                MinWidth="112"
+                                Margin="0,0,8,8"
+                                Click="FollowAlongCaptureButton_Click" />
                             <Button x:Name="InsertImageReferenceButton"
                                 Content="Insert ref"
                                 MinWidth="96"
