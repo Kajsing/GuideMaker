@@ -43,6 +43,7 @@ public partial class MainWindow : Window
     private GuideMetadata? currentMetadata;
     private List<GuideAsset> currentAssets = [];
     private Guid? selectedAssetId;
+    private Guid? selectedImageRefId;
     private Guid? selectedPoolAssetId;
     private Guid? selectedAnnotationId;
     private Guid? draggedAnnotationId;
@@ -484,15 +485,27 @@ public partial class MainWindow : Window
             return;
         }
 
-        selectedStep.AssetIds.Remove(selectedAsset.Id);
-        var imageRef = selectedStep.ImageRefs.FirstOrDefault(candidate => candidate.AssetId == selectedAsset.Id);
-        if (imageRef is not null)
+        if (selectedAsset.ImageRefId is { } imageRefId)
         {
-            selectedStep.ImageRefs.Remove(imageRef);
+            selectedStep.ImageRefs.RemoveAll(candidate => candidate.Id == imageRefId);
+            selectedStep.AssetIds.Clear();
+            selectedStep.AssetIds.AddRange(selectedStep.ImageRefs.Select(imageRef => imageRef.AssetId));
+        }
+        else
+        {
+            selectedStep.AssetIds.Remove(selectedAsset.Id);
+            selectedStep.Annotations.RemoveAll(annotation => annotation.AssetId == selectedAsset.Id);
         }
 
-        selectedStep.Annotations.RemoveAll(annotation => annotation.AssetId == selectedAsset.Id);
-        selectedAssetId = selectedStep.AssetIds.Count > 0 ? selectedStep.AssetIds[0] : null;
+        if (selectedStep.ImageRefs.Count > 0)
+        {
+            selectedStep.Annotations.Clear();
+            selectedStep.Annotations.AddRange(selectedStep.ImageRefs.SelectMany(imageRef => imageRef.Annotations));
+        }
+
+        var nextImageRef = selectedStep.ImageRefs.FirstOrDefault();
+        selectedImageRefId = nextImageRef?.Id;
+        selectedAssetId = nextImageRef?.AssetId ?? (selectedStep.AssetIds.Count > 0 ? selectedStep.AssetIds[0] : null);
         selectedAnnotationId = null;
         RefreshSelectedStepAssets();
         RefreshSelectedAssetAnnotations();
@@ -580,17 +593,19 @@ public partial class MainWindow : Window
             return;
         }
 
+        var annotations = GetSelectedAnnotationList();
         var annotation = selectedAnnotationId is { } annotationId
-            ? selectedStep.Annotations.FirstOrDefault(candidate => candidate.Id == annotationId)
-            : selectedStep.Annotations.LastOrDefault(candidate => candidate.AssetId == selectedAsset.Id);
+            ? annotations?.FirstOrDefault(candidate => candidate.Id == annotationId)
+            : annotations?.LastOrDefault(candidate => candidate.AssetId == selectedAsset.Id);
         if (annotation is null)
         {
             return;
         }
 
-        selectedStep.Annotations.Remove(annotation);
+        annotations?.Remove(annotation);
+        SyncStepAnnotationsFromImageRefs(selectedStep);
         selectedAnnotationId = null;
-        RefreshSelectedStepAssets(selectedAsset.Id);
+        RefreshSelectedStepAssets(selectedAsset.Id, selectedAsset.ImageRefId);
         RefreshSelectedAssetAnnotations();
         MarkDirty();
         SetStatus("Annotation removed from selected image.");
@@ -671,6 +686,7 @@ public partial class MainWindow : Window
     private void StepsListBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
         selectedAssetId = null;
+        selectedImageRefId = null;
         selectedAnnotationId = null;
         LoadSelectedStepIntoEditor();
         RefreshSelectedStepAssets();
@@ -688,13 +704,13 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (selectedAssetId == asset.Id)
+        if (selectedAssetId == asset.Id && selectedImageRefId == asset.ImageRefId)
         {
             e.Handled = true;
             return;
         }
 
-        SelectAsset(asset.Id);
+        SelectAsset(asset.Id, asset.ImageRefId);
         e.Handled = true;
     }
 
@@ -708,10 +724,12 @@ public partial class MainWindow : Window
         if (StepAssetsListBox.SelectedItem is EditableAsset selectedAsset)
         {
             selectedAssetId = selectedAsset.Id;
+            selectedImageRefId = selectedAsset.ImageRefId;
         }
         else
         {
             selectedAssetId = null;
+            selectedImageRefId = null;
         }
 
         selectedAnnotationId = null;
@@ -906,7 +924,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        var annotation = GetSelectedStep()?.Annotations.FirstOrDefault(candidate => candidate.Id == preview.Id);
+        var annotation = GetSelectedAnnotationList()?.FirstOrDefault(candidate => candidate.Id == preview.Id);
         if (annotation is null || selectedAssetId != annotation.AssetId)
         {
             return;
@@ -1127,6 +1145,7 @@ public partial class MainWindow : Window
         currentMetadata = project.Document.Metadata;
         currentAssets = [.. project.Document.Assets];
         selectedAssetId = null;
+        selectedImageRefId = null;
         selectedPoolAssetId = null;
         selectedAnnotationId = null;
 
@@ -1353,19 +1372,27 @@ public partial class MainWindow : Window
 
     private EditableAsset? GetSelectedEditableAsset()
     {
+        if (selectedImageRefId is { } imageRefId)
+        {
+            return selectedStepAssets.FirstOrDefault(asset => asset.ImageRefId == imageRefId);
+        }
+
         return selectedAssetId is { } assetId
             ? selectedStepAssets.FirstOrDefault(asset => asset.Id == assetId)
             : null;
     }
 
-    private void SelectAsset(Guid? assetId)
+    private void SelectAsset(Guid? assetId, Guid? imageRefId = null)
     {
         isChangingAssetSelection = true;
         selectedAssetId = assetId;
+        selectedImageRefId = imageRefId;
         selectedAnnotationId = null;
 
         isRefreshingAssets = true;
-        StepAssetsListBox.SelectedItem = selectedStepAssets.FirstOrDefault(asset => asset.Id == assetId);
+        StepAssetsListBox.SelectedItem = imageRefId is { }
+            ? selectedStepAssets.FirstOrDefault(asset => asset.ImageRefId == imageRefId)
+            : selectedStepAssets.FirstOrDefault(asset => asset.Id == assetId);
         isRefreshingAssets = false;
 
         RefreshWorkspaceImagePreview();
@@ -1383,24 +1410,15 @@ public partial class MainWindow : Window
             currentAssets.Add(asset);
         }
 
-        if (step.AssetIds.Contains(asset.Id))
-        {
-            selectedAssetId = asset.Id;
-            selectedAnnotationId = null;
-            RefreshImagePoolAssets(asset.Id);
-            RefreshSelectedStepAssets(asset.Id);
-            RefreshSelectedAssetAnnotations();
-            UpdateUiState();
-            return;
-        }
-
+        var imageRef = StepImageRef.Create(asset.Id);
         step.AssetIds.Add(asset.Id);
-        step.ImageRefs.Add(StepImageRef.Create(asset.Id));
+        step.ImageRefs.Add(imageRef);
         selectedAssetId = asset.Id;
+        selectedImageRefId = imageRef.Id;
         selectedPoolAssetId = asset.Id;
         selectedAnnotationId = null;
         RefreshImagePoolAssets(asset.Id);
-        RefreshSelectedStepAssets();
+        RefreshSelectedStepAssets(preferredImageRefId: imageRef.Id);
         RefreshSelectedAssetAnnotations();
         MarkDirty();
     }
@@ -1414,6 +1432,12 @@ public partial class MainWindow : Window
             return;
         }
 
+        var annotations = GetSelectedAnnotationList();
+        if (annotations is null)
+        {
+            return;
+        }
+
         var annotation = new GuideAnnotation
         {
             Id = Guid.NewGuid(),
@@ -1421,13 +1445,14 @@ public partial class MainWindow : Window
             AssetId = selectedAsset.Id,
             Text = text,
             Style = kind == GuideAnnotationKind.Label ? new GuideAnnotationStyle() : null,
-            Bounds = CreateDefaultBounds(kind, selectedStep.Annotations.Count(annotation => annotation.AssetId == selectedAsset.Id))
+            Bounds = CreateDefaultBounds(kind, annotations.Count(annotation => annotation.AssetId == selectedAsset.Id))
         };
 
-        selectedStep.Annotations.Add(annotation);
+        annotations.Add(annotation);
+        SyncStepAnnotationsFromImageRefs(selectedStep);
         selectedAnnotationId = annotation.Id;
 
-        RefreshSelectedStepAssets(selectedAsset.Id);
+        RefreshSelectedStepAssets(selectedAsset.Id, selectedAsset.ImageRefId);
         RefreshSelectedAssetAnnotations(annotation.Id);
         MarkDirty();
         SetStatus($"{kind} annotation added to selected image.");
@@ -1448,12 +1473,14 @@ public partial class MainWindow : Window
 
     private bool CanMoveSelectedAnnotation(int direction)
     {
-        if (GetSelectedStep() is not { } selectedStep || selectedAssetId is not { } assetId || selectedAnnotationId is not { } annotationId)
+        if (selectedAssetId is not { } assetId ||
+            selectedAnnotationId is not { } annotationId ||
+            GetSelectedAnnotationList() is not { } annotations)
         {
             return false;
         }
 
-        var assetAnnotations = selectedStep.Annotations
+        var assetAnnotations = annotations
             .Where(annotation => annotation.AssetId == assetId)
             .ToList();
         var selectedIndex = assetAnnotations.FindIndex(annotation => annotation.Id == annotationId);
@@ -1463,13 +1490,14 @@ public partial class MainWindow : Window
 
     private void MoveSelectedAnnotation(int direction)
     {
-        var selectedStep = GetSelectedStep();
-        if (selectedStep is null || selectedAssetId is not { } assetId || selectedAnnotationId is not { } annotationId)
+        if (selectedAssetId is not { } assetId ||
+            selectedAnnotationId is not { } annotationId ||
+            GetSelectedAnnotationList() is not { } annotations)
         {
             return;
         }
 
-        var assetAnnotationIndexes = selectedStep.Annotations
+        var assetAnnotationIndexes = annotations
             .Select((annotation, index) => new { Annotation = annotation, Index = index })
             .Where(item => item.Annotation.AssetId == assetId)
             .ToList();
@@ -1482,10 +1510,12 @@ public partial class MainWindow : Window
 
         var sourceListIndex = assetAnnotationIndexes[selectedIndex].Index;
         var targetListIndex = assetAnnotationIndexes[targetIndex].Index;
-        (selectedStep.Annotations[sourceListIndex], selectedStep.Annotations[targetListIndex]) =
-            (selectedStep.Annotations[targetListIndex], selectedStep.Annotations[sourceListIndex]);
+        (annotations[sourceListIndex], annotations[targetListIndex]) =
+            (annotations[targetListIndex], annotations[sourceListIndex]);
 
-        RefreshSelectedStepAssets(assetId);
+        SyncStepAnnotationsFromImageRefs(GetSelectedStep());
+
+        RefreshSelectedStepAssets(assetId, selectedImageRefId);
         RefreshSelectedAssetAnnotations(annotationId);
         MarkDirty();
         SetStatus(direction < 0 ? "Annotation moved up." : "Annotation moved down.");
@@ -1501,6 +1531,17 @@ public partial class MainWindow : Window
             GuideAnnotationKind.Blur => new AnnotationBounds { X = 0.18 + offset, Y = 0.18 + offset, Width = 0.28, Height = 0.18 },
             _ => new AnnotationBounds { X = 0.12 + offset, Y = 0.12 + offset, Width = 0.32, Height = 0.22 }
         };
+    }
+
+    private static void SyncStepAnnotationsFromImageRefs(EditableStep? step)
+    {
+        if (step is null || step.ImageRefs.Count == 0)
+        {
+            return;
+        }
+
+        step.Annotations.Clear();
+        step.Annotations.AddRange(step.ImageRefs.SelectMany(imageRef => imageRef.Annotations));
     }
 
     private void RefreshImagePoolAssets(Guid? preferredAssetId = null)
@@ -1529,16 +1570,19 @@ public partial class MainWindow : Window
         ImagePoolListBox.SelectedItem = selectedAsset;
     }
 
-    private void RefreshSelectedStepAssets(Guid? preferredAssetId = null)
+    private void RefreshSelectedStepAssets(Guid? preferredAssetId = null, Guid? preferredImageRefId = null)
     {
         var previousAssetId = selectedAssetId;
+        var previousImageRefId = selectedImageRefId;
         var targetAssetId = preferredAssetId ?? selectedAssetId;
+        var targetImageRefId = preferredImageRefId ?? selectedImageRefId;
         isRefreshingAssets = true;
         selectedStepAssets.Clear();
 
         if (currentProject is null || GetSelectedStep() is not { } selectedStep)
         {
             selectedAssetId = null;
+            selectedImageRefId = null;
             selectedAnnotationId = null;
             StepAssetsListBox.SelectedItem = null;
             RefreshWorkspaceImagePreview();
@@ -1546,26 +1590,55 @@ public partial class MainWindow : Window
             return;
         }
 
-        foreach (var assetId in selectedStep.AssetIds)
+        if (selectedStep.ImageRefs.Count > 0)
         {
-            var asset = currentAssets.FirstOrDefault(candidate => candidate.Id == assetId);
-            if (asset is null)
+            var usageCounts = new Dictionary<Guid, int>();
+            foreach (var imageRef in selectedStep.ImageRefs)
             {
-                continue;
-            }
+                var asset = currentAssets.FirstOrDefault(candidate => candidate.Id == imageRef.AssetId);
+                if (asset is null)
+                {
+                    continue;
+                }
 
-            var imageRef = selectedStep.ImageRefs.FirstOrDefault(candidate => candidate.AssetId == asset.Id);
-            selectedStepAssets.Add(EditableAsset.FromGuideAsset(
-                currentProject.ProjectDirectory,
-                asset,
-                selectedStep.Annotations.Where(annotation => annotation.AssetId == asset.Id),
-                imageRef?.Crop));
+                usageCounts.TryGetValue(asset.Id, out var usageNumber);
+                usageNumber++;
+                usageCounts[asset.Id] = usageNumber;
+
+                selectedStepAssets.Add(EditableAsset.FromGuideAsset(
+                    currentProject.ProjectDirectory,
+                    asset,
+                    imageRef.Annotations,
+                    imageRef.Crop,
+                    imageRef.Id,
+                    usageNumber));
+            }
+        }
+        else
+        {
+            foreach (var assetId in selectedStep.AssetIds)
+            {
+                var asset = currentAssets.FirstOrDefault(candidate => candidate.Id == assetId);
+                if (asset is null)
+                {
+                    continue;
+                }
+
+                selectedStepAssets.Add(EditableAsset.FromGuideAsset(
+                    currentProject.ProjectDirectory,
+                    asset,
+                    selectedStep.Annotations.Where(annotation => annotation.AssetId == asset.Id)));
+            }
         }
 
-        var selectedAsset = selectedStepAssets.FirstOrDefault(asset => asset.Id == targetAssetId)
+        var selectedAsset = targetImageRefId is { }
+            ? selectedStepAssets.FirstOrDefault(asset => asset.ImageRefId == targetImageRefId)
+            : null;
+        selectedAsset ??= selectedStepAssets.FirstOrDefault(asset => asset.Id == targetAssetId)
             ?? selectedStepAssets.FirstOrDefault();
         selectedAssetId = selectedAsset?.Id;
-        if (selectedAssetId != previousAssetId)
+        selectedImageRefId = selectedAsset?.ImageRefId;
+        if (selectedAssetId != previousAssetId || selectedImageRefId != previousImageRefId)
         {
             selectedAnnotationId = null;
         }
@@ -1592,7 +1665,7 @@ public partial class MainWindow : Window
         isRefreshingAnnotations = true;
         selectedAssetAnnotations.Clear();
 
-        if (GetSelectedStep() is not { } selectedStep || selectedAssetId is not { } assetId)
+        if (selectedAssetId is not { } assetId || GetSelectedAnnotationList() is not { } annotations)
         {
             selectedAnnotationId = null;
             AnnotationListBox.SelectedItem = null;
@@ -1605,7 +1678,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        foreach (var annotation in selectedStep.Annotations.Where(annotation => annotation.AssetId == assetId))
+        foreach (var annotation in annotations.Where(annotation => annotation.AssetId == assetId))
         {
             selectedAssetAnnotations.Add(EditableAnnotation.FromGuideAnnotation(annotation));
         }
@@ -1623,22 +1696,44 @@ public partial class MainWindow : Window
 
     private GuideAnnotation? GetSelectedAnnotation()
     {
-        if (GetSelectedStep() is not { } selectedStep || selectedAnnotationId is not { } annotationId)
+        if (selectedAnnotationId is not { } annotationId || GetSelectedAnnotationList() is not { } annotations)
         {
             return null;
         }
 
-        return selectedStep.Annotations.FirstOrDefault(annotation => annotation.Id == annotationId);
+        return annotations.FirstOrDefault(annotation => annotation.Id == annotationId);
+    }
+
+    private List<GuideAnnotation>? GetSelectedAnnotationList()
+    {
+        if (GetSelectedStep() is not { } selectedStep)
+        {
+            return null;
+        }
+
+        if (selectedImageRefId is { } imageRefId)
+        {
+            return selectedStep.ImageRefs.FirstOrDefault(imageRef => imageRef.Id == imageRefId)?.Annotations;
+        }
+
+        return selectedStep.Annotations;
     }
 
     private StepImageRef? GetSelectedImageRef()
     {
-        if (GetSelectedStep() is not { } selectedStep || selectedAssetId is not { } assetId)
+        if (GetSelectedStep() is not { } selectedStep)
         {
             return null;
         }
 
-        return selectedStep.ImageRefs.FirstOrDefault(imageRef => imageRef.AssetId == assetId);
+        if (selectedImageRefId is { } imageRefId)
+        {
+            return selectedStep.ImageRefs.FirstOrDefault(imageRef => imageRef.Id == imageRefId);
+        }
+
+        return selectedAssetId is { } assetId
+            ? selectedStep.ImageRefs.FirstOrDefault(imageRef => imageRef.AssetId == assetId)
+            : null;
     }
 
     private void UpdateSelectedImageRef(StepImageRef updatedImageRef)
@@ -1657,7 +1752,8 @@ public partial class MainWindow : Window
 
         selectedStep.ImageRefs[index] = updatedImageRef;
         selectedAssetId = updatedImageRef.AssetId;
-        RefreshSelectedStepAssets(updatedImageRef.AssetId);
+        selectedImageRefId = updatedImageRef.Id;
+        RefreshSelectedStepAssets(updatedImageRef.AssetId, updatedImageRef.Id);
         LoadSelectedCropIntoEditor();
         MarkDirty();
         SetStatus("Crop updated for selected image.");
@@ -1665,23 +1761,24 @@ public partial class MainWindow : Window
 
     private void UpdateSelectedAnnotation(GuideAnnotation updatedAnnotation, bool reloadEditor = true, bool refreshAssets = true)
     {
-        var selectedStep = GetSelectedStep();
-        if (selectedStep is null)
+        if (GetSelectedAnnotationList() is not { } annotations)
         {
             return;
         }
 
-        var index = selectedStep.Annotations.FindIndex(annotation => annotation.Id == updatedAnnotation.Id);
+        var index = annotations.FindIndex(annotation => annotation.Id == updatedAnnotation.Id);
         if (index < 0)
         {
             return;
         }
 
-        selectedStep.Annotations[index] = updatedAnnotation;
+        annotations[index] = updatedAnnotation;
+        SyncStepAnnotationsFromImageRefs(GetSelectedStep());
+
         selectedAnnotationId = updatedAnnotation.Id;
         if (refreshAssets && selectedAssetId == updatedAnnotation.AssetId)
         {
-            RefreshSelectedStepAssets(updatedAnnotation.AssetId);
+            RefreshSelectedStepAssets(updatedAnnotation.AssetId, selectedImageRefId);
         }
 
         RefreshSelectedAssetAnnotations(updatedAnnotation.Id, reloadEditor);
@@ -1690,23 +1787,24 @@ public partial class MainWindow : Window
 
     private void UpdateSelectedAnnotationQuietly(GuideAnnotation updatedAnnotation)
     {
-        var selectedStep = GetSelectedStep();
-        if (selectedStep is null)
+        if (GetSelectedAnnotationList() is not { } annotations)
         {
             return;
         }
 
-        var index = selectedStep.Annotations.FindIndex(annotation => annotation.Id == updatedAnnotation.Id);
+        var index = annotations.FindIndex(annotation => annotation.Id == updatedAnnotation.Id);
         if (index < 0)
         {
             return;
         }
 
-        selectedStep.Annotations[index] = updatedAnnotation;
+        annotations[index] = updatedAnnotation;
+        SyncStepAnnotationsFromImageRefs(GetSelectedStep());
+
         selectedAnnotationId = updatedAnnotation.Id;
         if (selectedAssetId == updatedAnnotation.AssetId)
         {
-            RefreshSelectedStepAssets(updatedAnnotation.AssetId);
+            RefreshSelectedStepAssets(updatedAnnotation.AssetId, selectedImageRefId);
             RefreshSelectedAssetAnnotations(updatedAnnotation.Id, reloadEditor: false);
         }
 
@@ -2024,42 +2122,38 @@ public partial class MainWindow : Window
         public GuideStep ToGuideStep()
         {
             var imageRefs = BuildImageRefs();
+            var assetIds = imageRefs.Count > 0
+                ? imageRefs.Select(imageRef => imageRef.AssetId).ToList()
+                : [.. AssetIds];
             return new GuideStep
             {
                 Id = Id,
                 Order = Order,
                 Title = string.IsNullOrWhiteSpace(Title) ? "Untitled step" : Title.Trim(),
                 Body = Body,
-                AssetIds = [.. AssetIds],
+                AssetIds = assetIds,
                 ImageRefs = imageRefs,
-                Annotations = [.. Annotations]
+                Annotations = imageRefs.Count > 0
+                    ? imageRefs.SelectMany(imageRef => imageRef.Annotations).ToList()
+                    : [.. Annotations]
             };
         }
 
         private List<StepImageRef> BuildImageRefs()
         {
-            var existingRefsByAssetId = ImageRefs
-                .GroupBy(imageRef => imageRef.AssetId)
-                .ToDictionary(
-                    group => group.Key,
-                    group => new Queue<StepImageRef>(group.Select(CloneImageRef)));
-            var imageRefs = new List<StepImageRef>();
-
-            foreach (var assetId in AssetIds)
+            if (ImageRefs.Count > 0)
             {
-                var imageRef = existingRefsByAssetId.TryGetValue(assetId, out var queue) && queue.Count > 0
-                    ? queue.Dequeue()
-                    : StepImageRef.Create(assetId);
-                imageRefs.Add(imageRef with
+                return ImageRefs.Select(CloneImageRef).ToList();
+            }
+
+            return AssetIds
+                .Select(assetId => StepImageRef.Create(assetId) with
                 {
-                    AssetId = assetId,
                     Annotations = Annotations
                         .Where(annotation => annotation.AssetId == assetId)
                         .ToList()
-                });
-            }
-
-            return imageRefs;
+                })
+                .ToList();
         }
 
         private static List<StepImageRef> CreateImageRefsFromLegacyStep(GuideStep step)
@@ -2091,6 +2185,8 @@ public partial class MainWindow : Window
     public sealed record EditableAsset
     {
         public required Guid Id { get; init; }
+
+        public Guid? ImageRefId { get; init; }
 
         public required string Caption { get; init; }
 
@@ -2134,7 +2230,9 @@ public partial class MainWindow : Window
             string projectDirectory,
             GuideAsset asset,
             IEnumerable<GuideAnnotation> annotations,
-            ImageCropBounds? crop = null)
+            ImageCropBounds? crop = null,
+            Guid? imageRefId = null,
+            int usageNumber = 0)
         {
             const double thumbFrameWidth = 96;
             const double thumbFrameHeight = 64;
@@ -2154,7 +2252,8 @@ public partial class MainWindow : Window
             return new EditableAsset
             {
                 Id = asset.Id,
-                Caption = string.IsNullOrWhiteSpace(asset.Caption) ? Path.GetFileName(asset.RelativePath) : asset.Caption,
+                ImageRefId = imageRefId,
+                Caption = CreateCaption(asset, usageNumber),
                 RelativePath = asset.RelativePath,
                 FullPath = fullPath,
                 DisplayImageSource = displayImage,
@@ -2174,6 +2273,12 @@ public partial class MainWindow : Window
                 WorkspaceImageWidth = workspaceGeometry.Width,
                 WorkspaceImageHeight = workspaceGeometry.Height
             };
+        }
+
+        private static string CreateCaption(GuideAsset asset, int usageNumber)
+        {
+            var caption = string.IsNullOrWhiteSpace(asset.Caption) ? Path.GetFileName(asset.RelativePath) : asset.Caption;
+            return usageNumber > 1 ? $"{caption} (use {usageNumber})" : caption;
         }
 
         private static BitmapSource? CreateDisplayImage(string fullPath, ImageCropBounds? crop)
@@ -2338,6 +2443,10 @@ public partial class MainWindow : Window
 
         public required Thickness BorderThickness { get; init; }
 
+        public required Visibility BoxVisibility { get; init; }
+
+        public required Visibility ArrowVisibility { get; init; }
+
         public string? Text { get; init; }
 
         public static EditableAnnotationPreview FromGuideAnnotation(
@@ -2347,6 +2456,7 @@ public partial class MainWindow : Window
             PreviewGeometry workspaceGeometry)
         {
             var style = GetEffectiveStyle(annotation);
+            var isArrow = annotation.Kind == GuideAnnotationKind.Arrow;
             return new EditableAnnotationPreview
             {
                 Id = annotation.Id,
@@ -2389,10 +2499,12 @@ public partial class MainWindow : Window
                     : FontStyles.Normal,
                 BorderThickness = annotation.Kind switch
                 {
-                    GuideAnnotationKind.Arrow => new Thickness(0, 2, 0, 0),
+                    GuideAnnotationKind.Arrow => new Thickness(0),
                     GuideAnnotationKind.Blur => new Thickness(1),
                     _ => new Thickness(2)
                 },
+                BoxVisibility = isArrow ? Visibility.Collapsed : Visibility.Visible,
+                ArrowVisibility = isArrow ? Visibility.Visible : Visibility.Collapsed,
                 Text = annotation.Kind switch
                 {
                     GuideAnnotationKind.Label => annotation.Text,

@@ -329,6 +329,86 @@ public sealed class GuideExportWriterTests
     }
 
     [Fact]
+    public async Task ExportAsync_WhenStepImageRefHasArrowAnnotation_WritesRenderedStepImageAsset()
+    {
+        var projectDirectory = Path.Combine(Path.GetTempPath(), "GuideMaker.Tests", Guid.NewGuid().ToString("N"));
+        var assetId = Guid.NewGuid();
+        var imageRefId = Guid.NewGuid();
+        var assetDirectory = Path.Combine(projectDirectory, GuideProjectLayout.AssetsDirectoryName);
+        var sourceImagePath = Path.Combine(assetDirectory, "screen.png");
+        var document = GuideDocument.Create("Arrow guide", "Codex") with
+        {
+            Steps =
+            [
+                GuideStep.Create(1, "Point at screen", "[[image:assets/screen.png]]") with
+                {
+                    ImageRefs =
+                    [
+                        new StepImageRef
+                        {
+                            Id = imageRefId,
+                            AssetId = assetId,
+                            Annotations =
+                            [
+                                new GuideAnnotation
+                                {
+                                    Id = Guid.NewGuid(),
+                                    Kind = GuideAnnotationKind.Arrow,
+                                    AssetId = assetId,
+                                    Bounds = new AnnotationBounds
+                                    {
+                                        X = 0.1,
+                                        Y = 0.25,
+                                        Width = 0.8,
+                                        Height = 0.5
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ],
+            Assets =
+            [
+                new GuideAsset
+                {
+                    Id = assetId,
+                    RelativePath = "assets/screen.png",
+                    Kind = GuideAssetKind.Screenshot,
+                    Caption = "Arrow screen",
+                    CapturedAt = DateTimeOffset.UtcNow
+                }
+            ]
+        };
+
+        try
+        {
+            Directory.CreateDirectory(assetDirectory);
+            await File.WriteAllBytesAsync(
+                sourceImagePath,
+                Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAQAAAACCAYAAAB/qH1jAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAOSURBVBhXY/iPBhjQBQAeIB/hYG4BMQAAAABJRU5ErkJggg=="));
+
+            var result = await new GuideExportWriter().ExportAsync(projectDirectory, document);
+
+            var renderedImagePath = Path.Combine(projectDirectory, "exports", "assets", "screen.png");
+            var markdown = await File.ReadAllTextAsync(result.MarkdownPath);
+            var html = await File.ReadAllTextAsync(result.HtmlPath);
+
+            Assert.True(File.Exists(renderedImagePath));
+            Assert.Contains("![Arrow screen](assets/screen.png)", markdown);
+            Assert.Contains("<img src=\"assets/screen.png\" alt=\"Arrow screen\">", html);
+            Assert.NotEqual(await File.ReadAllBytesAsync(sourceImagePath), await File.ReadAllBytesAsync(renderedImagePath));
+        }
+        finally
+        {
+            if (Directory.Exists(projectDirectory))
+            {
+                Directory.Delete(projectDirectory, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public async Task ExportAsync_WhenStepImageRefIsNotReferencedInBody_DoesNotRenderImageInGuide()
     {
         var projectDirectory = Path.Combine(Path.GetTempPath(), "GuideMaker.Tests", Guid.NewGuid().ToString("N"));

@@ -266,10 +266,26 @@ public sealed class ExportAssetRenderer
                 break;
 
             case GuideAnnotationKind.Arrow:
-                using (var pen = new Drawing.Pen(Drawing.Color.FromArgb(234, 67, 53), ScaleStroke(imageWidth, 5)))
+                var arrowColor = Drawing.Color.FromArgb(234, 67, 53);
+                var lineWidth = ScaleStroke(imageWidth, 5);
+                var centerY = y + height / 2;
+                var endX = x + width;
+                var headLength = Math.Min(width, Math.Max(lineWidth * 2.5f, ScaleStroke(imageWidth, 12)));
+                var headHalfHeight = Math.Max(lineWidth, Math.Min(height / 2, headLength * 0.45f));
+
+                using (var pen = new Drawing.Pen(arrowColor, lineWidth))
+                using (var brush = new Drawing.SolidBrush(arrowColor))
                 {
-                    pen.EndCap = Drawing2D.LineCap.ArrowAnchor;
-                    graphics.DrawLine(pen, x, y + height / 2, x + width, y + height / 2);
+                    pen.StartCap = Drawing2D.LineCap.Round;
+                    pen.EndCap = Drawing2D.LineCap.Flat;
+                    graphics.DrawLine(pen, x, centerY, Math.Max(x, endX - headLength * 0.55f), centerY);
+                    graphics.FillPolygon(
+                        brush,
+                        [
+                            new Drawing.PointF(endX, centerY),
+                            new Drawing.PointF(endX - headLength, centerY - headHalfHeight),
+                            new Drawing.PointF(endX - headLength, centerY + headHalfHeight)
+                        ]);
                 }
 
                 break;

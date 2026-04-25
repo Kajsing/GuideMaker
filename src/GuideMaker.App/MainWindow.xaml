@@ -402,19 +402,31 @@
                                                         </ItemsControl.ItemContainerStyle>
                                                         <ItemsControl.ItemTemplate>
                                                             <DataTemplate>
-                                                                <Border Width="{Binding ThumbWidth}"
-                                                                        Height="{Binding ThumbHeight}"
-                                                                        BorderBrush="{Binding BorderBrush}"
-                                                                        BorderThickness="{Binding BorderThickness}"
-                                                                        Background="{Binding Background}">
-                                                                <TextBlock Text="{Binding Text}"
-                                                                           Foreground="{Binding TextBrush}"
-                                                                           FontSize="{Binding ThumbFontSize}"
-                                                                           FontWeight="{Binding TextFontWeight}"
-                                                                           FontStyle="{Binding TextFontStyle}"
-                                                                           Margin="3,1"
-                                                                           TextTrimming="CharacterEllipsis" />
-                                                                </Border>
+                                                                <Grid Width="{Binding ThumbWidth}"
+                                                                      Height="{Binding ThumbHeight}"
+                                                                      Background="Transparent">
+                                                                    <Border BorderBrush="{Binding BorderBrush}"
+                                                                            BorderThickness="{Binding BorderThickness}"
+                                                                            Background="{Binding Background}"
+                                                                            Visibility="{Binding BoxVisibility}">
+                                                                        <TextBlock Text="{Binding Text}"
+                                                                                   Foreground="{Binding TextBrush}"
+                                                                                   FontSize="{Binding ThumbFontSize}"
+                                                                                   FontWeight="{Binding TextFontWeight}"
+                                                                                   FontStyle="{Binding TextFontStyle}"
+                                                                                   Margin="3,1"
+                                                                                   TextTrimming="CharacterEllipsis" />
+                                                                    </Border>
+                                                                    <Rectangle Height="3"
+                                                                               Fill="{Binding BorderBrush}"
+                                                                               VerticalAlignment="Center"
+                                                                               Visibility="{Binding ArrowVisibility}" />
+                                                                    <Polygon Points="0,0 8,4 0,8"
+                                                                             Fill="{Binding BorderBrush}"
+                                                                             HorizontalAlignment="Right"
+                                                                             VerticalAlignment="Center"
+                                                                             Visibility="{Binding ArrowVisibility}" />
+                                                                </Grid>
                                                             </DataTemplate>
                                                         </ItemsControl.ItemTemplate>
                                                     </ItemsControl>
@@ -1032,21 +1044,33 @@
                                             </ItemsControl.ItemContainerStyle>
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
-                                                    <Border Width="{Binding WorkspaceWidthValue}"
-                                                            Height="{Binding WorkspaceHeightValue}"
-                                                            BorderBrush="{Binding BorderBrush}"
-                                                            BorderThickness="{Binding BorderThickness}"
-                                                            Background="{Binding Background}"
-                                                            Cursor="SizeAll"
-                                                            PreviewMouseLeftButtonDown="WorkspaceAnnotation_PreviewMouseLeftButtonDown">
-                                                        <TextBlock Text="{Binding Text}"
-                                                                   Foreground="{Binding TextBrush}"
-                                                                   FontSize="{Binding WorkspaceFontSize}"
-                                                                   FontWeight="{Binding TextFontWeight}"
-                                                                   FontStyle="{Binding TextFontStyle}"
-                                                                   Margin="6,3"
-                                                                   TextTrimming="CharacterEllipsis" />
-                                                    </Border>
+                                                    <Grid Width="{Binding WorkspaceWidthValue}"
+                                                          Height="{Binding WorkspaceHeightValue}"
+                                                          Background="Transparent"
+                                                          Cursor="SizeAll"
+                                                          PreviewMouseLeftButtonDown="WorkspaceAnnotation_PreviewMouseLeftButtonDown">
+                                                        <Border BorderBrush="{Binding BorderBrush}"
+                                                                BorderThickness="{Binding BorderThickness}"
+                                                                Background="{Binding Background}"
+                                                                Visibility="{Binding BoxVisibility}">
+                                                            <TextBlock Text="{Binding Text}"
+                                                                       Foreground="{Binding TextBrush}"
+                                                                       FontSize="{Binding WorkspaceFontSize}"
+                                                                       FontWeight="{Binding TextFontWeight}"
+                                                                       FontStyle="{Binding TextFontStyle}"
+                                                                       Margin="6,3"
+                                                                       TextTrimming="CharacterEllipsis" />
+                                                        </Border>
+                                                        <Rectangle Height="5"
+                                                                   Fill="{Binding BorderBrush}"
+                                                                   VerticalAlignment="Center"
+                                                                   Visibility="{Binding ArrowVisibility}" />
+                                                        <Polygon Points="0,0 16,8 0,16"
+                                                                 Fill="{Binding BorderBrush}"
+                                                                 HorizontalAlignment="Right"
+                                                                 VerticalAlignment="Center"
+                                                                 Visibility="{Binding ArrowVisibility}" />
+                                                    </Grid>
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>

@@ -80,6 +80,8 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | 2026-04-26 | Image workspace refresh made explicit | Binding through the step image list selected item could leave the Image workspace stale, and pool selection was not reflected | Selecting another step or pool image now directly refreshes the workspace image source, geometry, and annotation overlay |
 | 2026-04-26 | Pool remains `guide.json`-registered with asset-folder scan | `guide.json` should stay source of truth, but users may have image files already in `assets/` | Pool has a scan action that registers untracked image files from `assets/` without attaching them to a step |
 | 2026-04-26 | Pool tab is not a step-editing context | Step image actions are confusing when the Pool tab has focus | Remove, Insert ref, crop, and annotation controls are disabled while Pool is active; Scan assets also reports registered images that are missing on disk |
+| 2026-04-26 | Arrow rendering made explicit | Smoke testing showed arrows looked like plain lines | App thumbnail/workspace previews and export burn-in now draw a line with a visible arrowhead |
+| 2026-04-26 | Pool images can be attached to a step more than once | The same original screenshot may need multiple crops or annotation sets in one step | Step selection now tracks the concrete `StepImageRef`, so duplicate uses can keep separate crop and annotations |
 
 ## Open Blockers
 
@@ -183,6 +185,9 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | 2026-04-26 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Asset pool scan build; Release tests passed; 33 tests passed |
 | 2026-04-26 | `git diff --check` | Pass | Pool tab action gating and missing asset scan whitespace check clean |
 | 2026-04-26 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Pool tab action gating and missing asset scan build; Release tests passed; 34 tests passed |
+| 2026-04-26 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Explicit arrowhead preview/export build; Release tests passed; 35 tests passed after closing a running app process that locked build outputs |
+| 2026-04-26 | `git diff --check` | Pass | Explicit arrowhead preview/export whitespace check clean |
+| 2026-04-26 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Duplicate pool image attachment and per-ref selection build; Release tests passed; 35 tests passed |
 
 ## Known Risks
 
@@ -198,6 +203,7 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | Annotation editor UI is getting crowded | Medium | Add hide/show or collapsible surfaces during M8 hardening |
 | Image list navigation is cramped | Medium | Rework Images area during image pool UI so three or more images are easy to scan and the scrollbar feels natural |
 | Image workspace does not fit large images well | Medium | Make the right-side Image workspace fit the available pane better before adding crop/resize handles |
+| Crop editing needs direct manipulation | Medium | Future crop mode should allow dragging a crop rectangle directly on the Workspace Image surface when Step tab and Crop are active |
 | Follow Along Capture needs desktop smoke testing | Medium | Win32 mouse hooks and minimization behavior must be verified manually on the target Windows machine |
 
 ## Known M8 Bugs
@@ -209,12 +215,11 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | Redact uses solid burn-in, not blur | Medium | Exported Markdown, HTML, and PDF now use generated images with annotations burned in. Redaction is solid dark masking; true blur can be added later if needed. |
 | Annotation percentage sliders are confusing | Medium | X/Y/Width/Height values interact awkwardly and should be redesigned or replaced with direct manipulation handles. |
 | Annotation controls are still clunky | Medium | Current compact buttons are better grouped but should become a cleaner tool strip or collapsible tool surface. |
-| Arrow annotation previews as a plain line | Medium | Arrow should render with a clear arrow head in the app workspace and exported output. |
 | Annotation X/Y behavior should use top-left origin | Medium | X/Y should consistently mean the annotation's top-left corner, with width/height changes preserving that anchor. |
 
 ## Next Recommended Step
 
-Smoke test visible image pool, basic crop editing, and initial Follow Along Capture on a real guide project.
+Smoke test duplicate pool image attachment, per-use crop/annotations, visible image pool, basic crop editing, and initial Follow Along Capture on a real guide project.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1
