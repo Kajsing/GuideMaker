@@ -2,9 +2,9 @@
 
 ## Current State
 
-Current milestone: Milestone 3 - Markdown And HTML Export.
+Current milestone: Milestone 4 - Basic UI Shell.
 
-Status: Milestone 2 is complete. Storage now validates guide projects, reports missing assets, and has smoke coverage for create/save/load and invalid project files.
+Status: Milestone 3 is complete. Markdown and HTML export can write deterministic files and sample-guide export is covered by smoke tests.
 
 ## Milestone 0 - Research And Decisions
 
@@ -58,7 +58,7 @@ Acceptance:
 
 ## Milestone 3 - Markdown And HTML Export
 
-Status: ready.
+Status: complete.
 
 Scope:
 
@@ -73,6 +73,8 @@ Acceptance:
 - exported files reference assets with correct relative paths.
 
 ## Milestone 4 - Basic UI Shell
+
+Status: ready.
 
 Scope:
 

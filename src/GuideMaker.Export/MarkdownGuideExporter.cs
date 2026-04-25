@@ -38,8 +38,8 @@ public sealed class MarkdownGuideExporter
                     continue;
                 }
 
-                var imagePath = asset.RelativePath.Replace('\\', '/');
-                var altText = string.IsNullOrWhiteSpace(asset.AltText) ? asset.Caption ?? step.Title : asset.AltText;
+                var imagePath = EscapeMarkdownLinkTarget(asset.RelativePath.Replace('\\', '/'));
+                var altText = EscapeMarkdownAltText(string.IsNullOrWhiteSpace(asset.AltText) ? asset.Caption ?? step.Title : asset.AltText);
                 builder.Append("![").Append(altText).Append("](").Append(imagePath).AppendLine(")");
 
                 if (!string.IsNullOrWhiteSpace(asset.Caption))
@@ -53,5 +53,21 @@ public sealed class MarkdownGuideExporter
         }
 
         return builder.ToString();
+    }
+
+    private static string EscapeMarkdownAltText(string value)
+    {
+        return value
+            .Replace("\\", "\\\\", StringComparison.Ordinal)
+            .Replace("[", "\\[", StringComparison.Ordinal)
+            .Replace("]", "\\]", StringComparison.Ordinal);
+    }
+
+    private static string EscapeMarkdownLinkTarget(string value)
+    {
+        return value
+            .Replace(" ", "%20", StringComparison.Ordinal)
+            .Replace("(", "%28", StringComparison.Ordinal)
+            .Replace(")", "%29", StringComparison.Ordinal);
     }
 }

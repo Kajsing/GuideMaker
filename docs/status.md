@@ -4,9 +4,9 @@
 
 Phase: Implementation
 
-Current milestone: Milestone 3 - Markdown and HTML export
+Current milestone: Milestone 4 - Basic UI shell
 
-Status: Milestone 2 storage hardening is complete. Next step is export hardening for Markdown and HTML.
+Status: Milestone 3 export hardening is complete. Next step is wiring the basic WPF UI shell to create/open/save guides.
 
 ## Decision Log
 
@@ -24,6 +24,7 @@ Status: Milestone 2 storage hardening is complete. Next step is export hardening
 | 2026-04-25 | Original research package moved to `archive/` | Keeps repo root focused on active project files | `docs/` remains the source of current guidance |
 | 2026-04-25 | .NET 8 SDK installed and validation scripts hardened | Enables real build/test validation | `validate.ps1` now passes and opts out of .NET CLI telemetry |
 | 2026-04-25 | Storage layer hardened | UI can rely on clearer project load/save behavior | Missing files, invalid JSON, schema errors, unsafe asset paths, and missing assets are covered |
+| 2026-04-25 | Markdown and HTML export hardened | Guides can be exported to deterministic files | `exports/guide.md` and `exports/guide.html` are covered by smoke tests |
 
 ## Open Blockers
 
@@ -38,8 +39,8 @@ Status: Milestone 2 storage hardening is complete. Next step is export hardening
 | 0 Research and decisions | Complete | Blockers resolved |
 | 1 Repo skeleton and core model | Complete | `validate.ps1` passes |
 | 2 Storage layer hardening | Complete | Validation passes with 10 tests |
-| 3 Markdown and HTML export | Ready | Basic exporter classes exist; hardening next |
-| 4 Basic UI shell | Not started | WPF shell exists; workflow not wired |
+| 3 Markdown and HTML export | Complete | Validation passes with 14 tests |
+| 4 Basic UI shell | Ready | WPF shell exists; workflow not wired |
 | 5 Images and screenshot capture | Not started | MVP scope |
 | 6 Basic annotation | Not started | MVP scope |
 | 7 PDF export and preview | Not started | PDF package decision needed |
@@ -60,6 +61,7 @@ Status: Milestone 2 storage hardening is complete. Next step is export hardening
 | 2026-04-25 | `winget install --id Microsoft.DotNet.SDK.8 --exact` | Pass | Installed .NET SDK 8.0.420 |
 | 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Restore/build/test passed; 2 tests passed |
 | 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Restore/build/test passed; 10 tests passed |
+| 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Restore/build/test passed; 14 tests passed |
 
 ## Known Risks
 
@@ -72,7 +74,7 @@ Status: Milestone 2 storage hardening is complete. Next step is export hardening
 
 ## Next Recommended Step
 
-Start Milestone 3: harden Markdown and HTML export, add export file writing, and add smoke tests using the sample guide.
+Start Milestone 4: wire the WPF shell to create, open, edit, save, and reopen basic guide projects.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1
