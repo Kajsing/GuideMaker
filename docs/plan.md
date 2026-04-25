@@ -2,9 +2,9 @@
 
 ## Current State
 
-Current milestone: Milestone 7 - PDF Export And Preview.
+Current milestone: Milestone 8 - MVP Hardening.
 
-Status: Milestone 6 is complete. Basic annotations can be saved, previewed as UI overlays, and exported as HTML overlays.
+Status: Milestone 7 is complete. Guides can be previewed in the app and exported to Markdown, HTML, and PDF.
 
 ## Milestone 0 - Research And Decisions
 
@@ -122,7 +122,7 @@ Acceptance:
 
 ## Milestone 7 - PDF Export And Preview
 
-Status: ready.
+Status: complete.
 
 Scope:
 
@@ -137,9 +137,13 @@ Acceptance:
 
 ## Milestone 8 - MVP Hardening
 
+Status: ready.
+
 Scope:
 
 - polish primary workflow
+- add a usable annotation editor: select, move, resize, and edit label text
+- implement hard redaction for exported output instead of visual-only overlays
 - error messages
 - file safety
 - final validation

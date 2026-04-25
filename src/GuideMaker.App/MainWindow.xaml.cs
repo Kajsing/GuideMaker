@@ -20,6 +20,7 @@ public partial class MainWindow : Window
     private readonly GuideProjectStore projectStore = new();
     private readonly GuideAssetFileStore assetFileStore = new();
     private readonly GuideExportWriter exportWriter = new();
+    private readonly HtmlGuideExporter previewExporter = new();
     private readonly ObservableCollection<EditableStep> steps = [];
     private readonly ObservableCollection<EditableAsset> selectedStepAssets = [];
 
@@ -139,11 +140,34 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (!ConfirmExportReview())
+        {
+            return;
+        }
+
         await RunUiActionAsync(async () =>
         {
             var result = await exportWriter.ExportAsync(currentProject.ProjectDirectory, BuildDocumentFromUi())
                 .ConfigureAwait(true);
-            SetStatus($"Exported Markdown and HTML to {Path.GetDirectoryName(result.MarkdownPath)}.");
+            GuidePreviewBrowser.Navigate(new Uri(result.HtmlPath));
+            PreviewPathTextBlock.Text = result.HtmlPath;
+            SetStatus($"Exported Markdown, HTML, and PDF to {Path.GetDirectoryName(result.MarkdownPath)}.");
+        }).ConfigureAwait(true);
+    }
+
+    private async void PreviewGuideButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (currentProject is null || currentMetadata is null)
+        {
+            return;
+        }
+
+        await RunUiActionAsync(async () =>
+        {
+            var previewPath = await WritePreviewAsync().ConfigureAwait(true);
+            GuidePreviewBrowser.Navigate(new Uri(previewPath));
+            PreviewPathTextBlock.Text = previewPath;
+            SetStatus("Preview updated.");
         }).ConfigureAwait(true);
     }
 
@@ -466,6 +490,35 @@ public partial class MainWindow : Window
         return success;
     }
 
+    private async Task<string> WritePreviewAsync(CancellationToken cancellationToken = default)
+    {
+        if (currentProject is null)
+        {
+            throw new InvalidOperationException("No guide project is open.");
+        }
+
+        var exportsDirectory = Path.Combine(currentProject.ProjectDirectory, GuideProjectLayout.ExportsDirectoryName);
+        Directory.CreateDirectory(exportsDirectory);
+
+        var previewPath = Path.Combine(exportsDirectory, "preview.html");
+        await File.WriteAllTextAsync(previewPath, previewExporter.Export(BuildDocumentFromUi(), "../"), cancellationToken)
+            .ConfigureAwait(true);
+
+        return previewPath;
+    }
+
+    private bool ConfirmExportReview()
+    {
+        var result = WpfMessageBox.Show(
+            this,
+            "Review the guide text, screenshots, and redactions before export. Exported files may contain sensitive or internal information.",
+            "Review before export",
+            MessageBoxButton.OKCancel,
+            MessageBoxImage.Warning);
+
+        return result == MessageBoxResult.OK;
+    }
+
     private async Task RunUiActionAsync(Func<Task> action)
     {
         try
@@ -591,6 +644,7 @@ public partial class MainWindow : Window
         NewGuideButton.IsEnabled = isEnabled;
         OpenGuideButton.IsEnabled = isEnabled;
         SaveGuideButton.IsEnabled = isEnabled;
+        PreviewGuideButton.IsEnabled = isEnabled;
         ExportGuideButton.IsEnabled = isEnabled;
         AddStepButton.IsEnabled = isEnabled;
         DeleteStepButton.IsEnabled = isEnabled;
@@ -613,6 +667,7 @@ public partial class MainWindow : Window
         var hasSelectedAsset = StepAssetsListBox.SelectedItem is EditableAsset;
 
         SaveGuideButton.IsEnabled = hasProject;
+        PreviewGuideButton.IsEnabled = hasProject;
         ExportGuideButton.IsEnabled = hasProject;
         AddStepButton.IsEnabled = hasProject;
         DeleteStepButton.IsEnabled = hasProject && hasSelectedStep;

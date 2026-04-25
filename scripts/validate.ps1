@@ -18,4 +18,4 @@ function Invoke-DotNet {
 
 Invoke-DotNet restore .\GuideMaker.sln
 Invoke-DotNet build .\GuideMaker.sln --configuration Release --no-restore
-Invoke-DotNet test .\GuideMaker.sln --configuration Debug --no-restore
+Invoke-DotNet test .\GuideMaker.sln --configuration Release --no-restore

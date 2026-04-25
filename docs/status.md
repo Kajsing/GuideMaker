@@ -4,9 +4,9 @@
 
 Phase: Implementation
 
-Current milestone: Milestone 7 - PDF export and preview
+Current milestone: Milestone 8 - MVP hardening
 
-Status: Milestone 6 basic annotation is complete. Next step is PDF export and preview.
+Status: Milestone 7 PDF export and preview is complete. Next step is MVP hardening and workflow polish.
 
 ## Decision Log
 
@@ -32,7 +32,12 @@ Status: Milestone 6 basic annotation is complete. Next step is PDF export and pr
 | 2026-04-25 | Multi-image import added | Users may collect several screenshots before attaching them | Import dialog can attach multiple selected files to the current step |
 | 2026-04-25 | Image display sizing deferred to annotation/export work | Size needs per-step image reference metadata, not only asset metadata | Revisit during Milestone 6 or 7 before final export polish |
 | 2026-04-25 | Basic annotations added | Supports practical marking without a full image editor | Highlight, label, arrow, and redaction annotations are saved and exported as HTML overlays |
-| 2026-04-25 | Validation tests run in Debug while app builds in Release | Release test assembly is blocked by local Windows Application Control policy | `validate.ps1` still builds Release, then runs Debug tests |
+| 2026-04-25 | Validation tests run in Release again | Smart App Control was disabled and Release test assemblies are no longer blocked | `validate.ps1` now builds and tests Release |
+| 2026-04-25 | PDFsharp selected for MVP PDF export | Free/open-source MIT package with local .NET 8 PDF generation | `GuideMaker.Export` now writes `exports/guide.pdf` |
+| 2026-04-25 | In-app preview added | Authors need to review guide output before export | Preview writes local `exports/preview.html` and displays it in the app |
+| 2026-04-25 | Sensitive-content export warning added | Guide text and screenshots may contain internal data | Export asks the user to review content before writing Markdown, HTML, and PDF |
+| 2026-04-25 | Hard redaction moved to Milestone 8 | Visual overlays are not enough for sensitive content | Redaction should burn or blur pixels in exported output during hardening |
+| 2026-04-25 | Annotation editor moved to Milestone 8 | Current annotation buttons only add default-position overlays | Users need to select, move, resize, and edit labels before MVP hardening is complete |
 
 ## Open Blockers
 
@@ -51,8 +56,8 @@ Status: Milestone 6 basic annotation is complete. Next step is PDF export and pr
 | 4 Basic UI shell | Complete | Create/open/edit/save/reopen loop wired |
 | 5 Images and screenshot capture | Complete | Import, paste, capture, attach, and preview wired |
 | 6 Basic annotation | Complete | Highlight, label, arrow, redaction overlays wired |
-| 7 PDF export and preview | Ready | PDF package decision needed |
-| 8 MVP hardening | Not started | Final polish |
+| 7 PDF export and preview | Complete | PDFsharp export, local preview, and export warning added |
+| 8 MVP hardening | Ready | Annotation editor, hard redaction, final polish |
 
 ## Validation Log
 
@@ -76,21 +81,23 @@ Status: Milestone 6 basic annotation is complete. Next step is PDF export and pr
 | 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Export image path/reference fix; 19 tests passed |
 | 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Multi-image import build; 19 tests passed |
 | 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Release build and Debug tests passed; 21 tests passed |
+| 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | PDF export and preview build; 24 tests passed |
+| 2026-04-25 | `dotnet test .\GuideMaker.sln --configuration Release --no-restore` | Pass | Smart App Control no longer blocks Release tests; 24 tests passed |
 
 ## Known Risks
 
 | Risk | Severity | Mitigation |
 |---|---|---|
-| PDF export package choice | Medium | Choose free/local library during PDF milestone |
 | Screenshot capture complexity | Medium | Keep capture flow small and local-first |
-| Sensitive screenshots | High | Add export warning and basic redaction/blur if feasible |
+| Sensitive screenshots | High | Add hard redaction in Milestone 8 so exported output destroys or blurs pixels instead of only using visual overlays |
 | Scope creep | High | Keep non-goals explicit in `docs/spec.md` and `AGENTS.md` |
 | Dark mode placement | Low | Move the topbar toggle into Settings when a Settings surface exists |
 | Image display sizing model | Medium | Introduce per-step image reference metadata before implementing size controls |
+| Annotation placement is not user-controlled yet | High | Add select, drag, resize, and label editing in Milestone 8 |
 
 ## Next Recommended Step
 
-Start Milestone 7: choose a free/local PDF export approach, add preview, and export Markdown, HTML, and PDF from the UI with a sensitive-content warning.
+Start Milestone 8: polish the MVP workflow, improve error messages, review file safety, and document known limitations before packaging.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1

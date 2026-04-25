@@ -6,19 +6,22 @@ public sealed class GuideExportWriter
 {
     public const string MarkdownFileName = "guide.md";
     public const string HtmlFileName = "guide.html";
+    public const string PdfFileName = "guide.pdf";
 
     private readonly MarkdownGuideExporter markdownExporter;
     private readonly HtmlGuideExporter htmlExporter;
+    private readonly PdfGuideExporter pdfExporter;
 
     public GuideExportWriter()
-        : this(new MarkdownGuideExporter(), new HtmlGuideExporter())
+        : this(new MarkdownGuideExporter(), new HtmlGuideExporter(), new PdfGuideExporter())
     {
     }
 
-    public GuideExportWriter(MarkdownGuideExporter markdownExporter, HtmlGuideExporter htmlExporter)
+    public GuideExportWriter(MarkdownGuideExporter markdownExporter, HtmlGuideExporter htmlExporter, PdfGuideExporter pdfExporter)
     {
         this.markdownExporter = markdownExporter;
         this.htmlExporter = htmlExporter;
+        this.pdfExporter = pdfExporter;
     }
 
     public async Task<GuideExportResult> ExportAsync(
@@ -34,16 +37,20 @@ public sealed class GuideExportWriter
 
         var markdownPath = Path.Combine(exportsDirectory, MarkdownFileName);
         var htmlPath = Path.Combine(exportsDirectory, HtmlFileName);
+        var pdfPath = Path.Combine(exportsDirectory, PdfFileName);
 
         await File.WriteAllTextAsync(markdownPath, markdownExporter.Export(document, "../"), cancellationToken)
             .ConfigureAwait(false);
         await File.WriteAllTextAsync(htmlPath, htmlExporter.Export(document, "../"), cancellationToken)
             .ConfigureAwait(false);
+        await File.WriteAllBytesAsync(pdfPath, pdfExporter.Export(document, projectDirectory), cancellationToken)
+            .ConfigureAwait(false);
 
         return new GuideExportResult
         {
             MarkdownPath = markdownPath,
-            HtmlPath = htmlPath
+            HtmlPath = htmlPath,
+            PdfPath = pdfPath
         };
     }
 }

@@ -3,9 +3,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="GuideMaker"
         Height="760"
-        Width="1180"
+        Width="1360"
         MinHeight="620"
-        MinWidth="960"
+        MinWidth="1180"
         FontFamily="Segoe UI"
         Background="#F8FAFD"
         Closing="Window_Closing">
@@ -169,6 +169,11 @@
                             Margin="0,0,8,0"
                             Style="{StaticResource PrimaryButtonStyle}"
                             Click="SaveGuideButton_Click" />
+                    <Button x:Name="PreviewGuideButton"
+                            Content="Preview"
+                            MinWidth="104"
+                            Margin="0,0,8,0"
+                            Click="PreviewGuideButton_Click" />
                     <Button x:Name="ExportGuideButton"
                             Content="Export"
                             MinWidth="92"
@@ -182,6 +187,7 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="320" />
                 <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="380" />
             </Grid.ColumnDefinitions>
 
             <Border Grid.Column="0"
@@ -424,6 +430,41 @@
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
+                </Grid>
+            </Border>
+
+            <Border Grid.Column="2"
+                    Background="{DynamicResource SurfaceBrush}"
+                    BorderBrush="{DynamicResource BorderBrushSoft}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Margin="20,0,0,0"
+                    Padding="14">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <DockPanel Margin="0,0,0,10">
+                        <TextBlock Text="Preview"
+                                   FontSize="13"
+                                   FontWeight="SemiBold"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource PrimaryBrush}" />
+                        <TextBlock x:Name="PreviewPathTextBlock"
+                                   DockPanel.Dock="Right"
+                                   Text="Not generated"
+                                   Foreground="{DynamicResource MutedTextBrush}"
+                                   TextTrimming="CharacterEllipsis" />
+                    </DockPanel>
+
+                    <Border Grid.Row="1"
+                            BorderBrush="{DynamicResource BorderBrushSoft}"
+                            BorderThickness="1"
+                            Background="#FFFFFF">
+                        <WebBrowser x:Name="GuidePreviewBrowser" />
+                    </Border>
                 </Grid>
             </Border>
         </Grid>

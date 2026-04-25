@@ -67,6 +67,8 @@ PDF export is MVP scope, but the concrete implementation package must be chosen 
 - usable from tests or smoke checks
 - acceptable license for internal use
 
+Decision: use `PDFsharp` for MVP PDF generation. It is a free/open-source MIT-licensed NuGet package, runs locally, supports .NET 8, and keeps PDF generation inside `GuideMaker.Export`.
+
 ## Screenshot And Annotation Strategy
 
 Follow-along screenshot capture belongs in or below the app layer because it interacts with Windows desktop APIs.

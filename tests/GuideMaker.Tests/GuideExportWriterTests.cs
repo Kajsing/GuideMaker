@@ -27,14 +27,18 @@ public sealed class GuideExportWriterTests
 
             Assert.True(File.Exists(result.MarkdownPath));
             Assert.True(File.Exists(result.HtmlPath));
+            Assert.True(File.Exists(result.PdfPath));
             Assert.EndsWith(Path.Combine(GuideProjectLayout.ExportsDirectoryName, GuideExportWriter.MarkdownFileName), result.MarkdownPath);
             Assert.EndsWith(Path.Combine(GuideProjectLayout.ExportsDirectoryName, GuideExportWriter.HtmlFileName), result.HtmlPath);
+            Assert.EndsWith(Path.Combine(GuideProjectLayout.ExportsDirectoryName, GuideExportWriter.PdfFileName), result.PdfPath);
 
             var markdown = await File.ReadAllTextAsync(result.MarkdownPath);
             var html = await File.ReadAllTextAsync(result.HtmlPath);
+            var pdf = await File.ReadAllBytesAsync(result.PdfPath);
 
             Assert.Contains("# Printer setup", markdown);
             Assert.Contains("<h1>Printer setup</h1>", html);
+            Assert.Equal("%PDF-"u8.ToArray(), pdf.Take(5).ToArray());
         }
         finally
         {
@@ -69,11 +73,13 @@ public sealed class GuideExportWriterTests
 
             var markdown = await File.ReadAllTextAsync(result.MarkdownPath);
             var html = await File.ReadAllTextAsync(result.HtmlPath);
+            var pdf = await File.ReadAllBytesAsync(result.PdfPath);
 
             Assert.Contains("# Starter guide", markdown);
             Assert.Contains("![Screenshot of the application start screen.](../assets/open-application.png)", markdown);
             Assert.Contains("<h1>Starter guide</h1>", html);
             Assert.Contains("<img src=\"../assets/open-application.png\" alt=\"Screenshot of the application start screen.\">", html);
+            Assert.Equal("%PDF-"u8.ToArray(), pdf.Take(5).ToArray());
         }
         finally
         {
