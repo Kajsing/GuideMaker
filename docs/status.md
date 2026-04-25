@@ -73,6 +73,7 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | 2026-04-25 | Visible image pool added | Follow-along capture and reuse need originals to outlive their step attachments | The app now shows a Pool tab, keeps removed step images in the project asset pool, and can attach pool images back to the selected step |
 | 2026-04-25 | Preview uses rendered export assets | Preview and export should not disagree about image refs, crop, or burned-in annotations | `preview.html` now renders through the export asset renderer before HTML generation |
 | 2026-04-26 | Step image refs render only when referenced | Attaching a pool image to a step should make it available, not automatically print it in the guide | Steps with image refs now export only images explicitly placed with `[[image:...]]`; legacy `AssetIds` fallback remains readable |
+| 2026-04-26 | Basic crop editing added for step images | Follow-along and pool reuse need non-destructive crops per step | Selected step images can store crop bounds; the app previews the cropped image and export renders cropped generated assets without changing originals |
 
 ## Open Blockers
 
@@ -92,7 +93,7 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | 5 Images and screenshot capture | Complete | Import, paste, capture, attach, and preview wired |
 | 6 Basic annotation | Complete | Highlight, label, arrow, redaction overlays wired |
 | 7 PDF export and preview | Complete | PDFsharp export, local preview, and export warning added |
-| 8 MVP hardening | In progress | Image pool model/storage/export and app save/load bridge slices are in place; visible image pool UI, follow-along capture, crop, annotation editor polish, rotate controls, and final polish remain |
+| 8 MVP hardening | In progress | Image pool model/storage/export and app save/load bridge slices are in place; visible image pool UI and basic crop editing are added. Follow-along capture, annotation editor polish, rotate controls, and final polish remain |
 
 ## Validation Log
 
@@ -162,6 +163,8 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Visible image pool and rendered preview build; Release tests passed; 30 tests passed |
 | 2026-04-26 | `git diff --check` | Pass | Explicit image reference export whitespace check clean |
 | 2026-04-26 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Explicit image reference export build; Release tests passed; 31 tests passed |
+| 2026-04-26 | `git diff --check` | Pass | Basic step image crop UI whitespace check clean |
+| 2026-04-26 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Basic step image crop UI build; Release tests passed; 32 tests passed |
 
 ## Known Risks
 
@@ -192,7 +195,7 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 
 ## Next Recommended Step
 
-Smoke test the visible image pool, then continue Milestone 8 image pipeline with crop editing on step image refs.
+Smoke test the visible image pool and basic crop editor, then continue Milestone 8 with Follow Along Capture on top of the pool.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1

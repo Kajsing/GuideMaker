@@ -371,7 +371,7 @@
                                                 <Grid ClipToBounds="True">
                                                     <Canvas Width="96"
                                                             Height="64">
-                                                        <Image Source="{Binding FullPath}"
+                                                        <Image Source="{Binding DisplayImageSource}"
                                                                Canvas.Left="{Binding ThumbImageX}"
                                                                Canvas.Top="{Binding ThumbImageY}"
                                                                Width="{Binding ThumbImageWidth}"
@@ -488,8 +488,123 @@
                         </TabItem>
                     </TabControl>
 
-                    <Border Grid.Row="6"
-                            Margin="0,14,0,0"
+                    <StackPanel Grid.Row="6"
+                                Margin="0,14,0,0">
+                    <Border Padding="12"
+                            BorderBrush="{DynamicResource BorderBrushSoft}"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Background="{DynamicResource CanvasBrush}">
+                        <Expander x:Name="CropEditorExpander"
+                                  Header="Crop"
+                                  IsExpanded="False"
+                                  Foreground="{DynamicResource TextBrush}">
+                            <Grid Margin="0,10,0,0">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="70" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="52" />
+                                    <ColumnDefinition Width="90" />
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock Text="{Binding ElementName=StepAssetsListBox, Path=SelectedItem.CropSummary}"
+                                           Grid.ColumnSpan="3"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource MutedTextBrush}" />
+                                <Button x:Name="ClearCropButton"
+                                        Grid.Column="3"
+                                        Content="Clear"
+                                        MinWidth="72"
+                                        HorizontalAlignment="Right"
+                                        Click="ClearCropButton_Click" />
+
+                                <TextBlock Grid.Row="1"
+                                           Text="X"
+                                           Margin="0,10,0,0"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource MutedTextBrush}" />
+                                <Slider x:Name="CropXSlider"
+                                        Grid.Row="1"
+                                        Grid.Column="1"
+                                        Margin="0,10,10,0"
+                                        Minimum="0"
+                                        Maximum="100"
+                                        ValueChanged="CropSlider_ValueChanged" />
+                                <TextBlock Grid.Row="1"
+                                           Grid.Column="2"
+                                           Text="{Binding ElementName=CropXSlider, Path=Value, StringFormat={}{0:0}%}"
+                                           Margin="0,10,0,0"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource MutedTextBrush}" />
+
+                                <TextBlock Grid.Row="2"
+                                           Text="Y"
+                                           Margin="0,8,0,0"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource MutedTextBrush}" />
+                                <Slider x:Name="CropYSlider"
+                                        Grid.Row="2"
+                                        Grid.Column="1"
+                                        Margin="0,8,10,0"
+                                        Minimum="0"
+                                        Maximum="100"
+                                        ValueChanged="CropSlider_ValueChanged" />
+                                <TextBlock Grid.Row="2"
+                                           Grid.Column="2"
+                                           Text="{Binding ElementName=CropYSlider, Path=Value, StringFormat={}{0:0}%}"
+                                           Margin="0,8,0,0"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource MutedTextBrush}" />
+
+                                <TextBlock Grid.Row="3"
+                                           Text="Width"
+                                           Margin="0,8,0,0"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource MutedTextBrush}" />
+                                <Slider x:Name="CropWidthSlider"
+                                        Grid.Row="3"
+                                        Grid.Column="1"
+                                        Margin="0,8,10,0"
+                                        Minimum="1"
+                                        Maximum="100"
+                                        ValueChanged="CropSlider_ValueChanged" />
+                                <TextBlock Grid.Row="3"
+                                           Grid.Column="2"
+                                           Text="{Binding ElementName=CropWidthSlider, Path=Value, StringFormat={}{0:0}%}"
+                                           Margin="0,8,0,0"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource MutedTextBrush}" />
+
+                                <TextBlock Grid.Row="4"
+                                           Text="Height"
+                                           Margin="0,8,0,0"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource MutedTextBrush}" />
+                                <Slider x:Name="CropHeightSlider"
+                                        Grid.Row="4"
+                                        Grid.Column="1"
+                                        Margin="0,8,10,0"
+                                        Minimum="1"
+                                        Maximum="100"
+                                        ValueChanged="CropSlider_ValueChanged" />
+                                <TextBlock Grid.Row="4"
+                                           Grid.Column="2"
+                                           Text="{Binding ElementName=CropHeightSlider, Path=Value, StringFormat={}{0:0}%}"
+                                           Margin="0,8,0,0"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource MutedTextBrush}" />
+                            </Grid>
+                        </Expander>
+                    </Border>
+
+                    <Border Margin="0,10,0,0"
                             Padding="12"
                             BorderBrush="{DynamicResource BorderBrushSoft}"
                             BorderThickness="1"
@@ -820,6 +935,7 @@
                             </Grid>
                         </Expander>
                     </Border>
+                    </StackPanel>
                 </Grid>
             </Border>
 
@@ -883,7 +999,7 @@
                                           PreviewMouseLeftButtonUp="WorkspaceImageSurface_PreviewMouseLeftButtonUp">
                                         <Canvas Width="760"
                                                 Height="520">
-                                            <Image Source="{Binding ElementName=StepAssetsListBox, Path=SelectedItem.FullPath}"
+                                            <Image Source="{Binding ElementName=StepAssetsListBox, Path=SelectedItem.DisplayImageSource}"
                                                    Canvas.Left="{Binding ElementName=StepAssetsListBox, Path=SelectedItem.WorkspaceImageX}"
                                                    Canvas.Top="{Binding ElementName=StepAssetsListBox, Path=SelectedItem.WorkspaceImageY}"
                                                    Width="{Binding ElementName=StepAssetsListBox, Path=SelectedItem.WorkspaceImageWidth}"

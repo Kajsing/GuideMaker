@@ -257,6 +257,78 @@ public sealed class GuideExportWriterTests
     }
 
     [Fact]
+    public async Task ExportAsync_WhenStepImageRefHasCropWithoutAnnotations_WritesCroppedStepImageAsset()
+    {
+        var projectDirectory = Path.Combine(Path.GetTempPath(), "GuideMaker.Tests", Guid.NewGuid().ToString("N"));
+        var assetId = Guid.NewGuid();
+        var imageRefId = Guid.NewGuid();
+        var assetDirectory = Path.Combine(projectDirectory, GuideProjectLayout.AssetsDirectoryName);
+        var sourceImagePath = Path.Combine(assetDirectory, "screen.png");
+        var document = GuideDocument.Create("Crop-only guide", "Codex") with
+        {
+            Steps =
+            [
+                GuideStep.Create(1, "Use cropped screen", "[[image:assets/screen.png]]") with
+                {
+                    ImageRefs =
+                    [
+                        new StepImageRef
+                        {
+                            Id = imageRefId,
+                            AssetId = assetId,
+                            Crop = new ImageCropBounds
+                            {
+                                X = 0.5,
+                                Y = 0,
+                                Width = 0.5,
+                                Height = 1
+                            }
+                        }
+                    ]
+                }
+            ],
+            Assets =
+            [
+                new GuideAsset
+                {
+                    Id = assetId,
+                    RelativePath = "assets/screen.png",
+                    Kind = GuideAssetKind.Screenshot,
+                    Caption = "Crop-only screen",
+                    CapturedAt = DateTimeOffset.UtcNow
+                }
+            ]
+        };
+
+        try
+        {
+            Directory.CreateDirectory(assetDirectory);
+            await File.WriteAllBytesAsync(
+                sourceImagePath,
+                Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAQAAAACCAYAAAB/qH1jAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAOSURBVBhXY/iPBhjQBQAeIB/hYG4BMQAAAABJRU5ErkJggg=="));
+
+            var result = await new GuideExportWriter().ExportAsync(projectDirectory, document);
+
+            var renderedImagePath = Path.Combine(projectDirectory, "exports", "assets", "screen.png");
+            var markdown = await File.ReadAllTextAsync(result.MarkdownPath);
+
+            Assert.True(File.Exists(renderedImagePath));
+            Assert.Contains("![Crop-only screen](assets/screen.png)", markdown);
+
+            var renderedDimensions = ReadPngDimensions(await File.ReadAllBytesAsync(renderedImagePath));
+            Assert.Equal(2, renderedDimensions.Width);
+            Assert.Equal(2, renderedDimensions.Height);
+        }
+        finally
+        {
+            if (Directory.Exists(projectDirectory))
+            {
+                Directory.Delete(projectDirectory, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public async Task ExportAsync_WhenStepImageRefIsNotReferencedInBody_DoesNotRenderImageInGuide()
     {
         var projectDirectory = Path.Combine(Path.GetTempPath(), "GuideMaker.Tests", Guid.NewGuid().ToString("N"));

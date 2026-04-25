@@ -483,6 +483,7 @@ public partial class MainWindow : Window
         LoadSelectedStepIntoEditor();
         RefreshSelectedStepAssets();
         RefreshSelectedAssetAnnotations();
+        LoadSelectedCropIntoEditor();
         UpdateUiState();
     }
 
@@ -524,6 +525,7 @@ public partial class MainWindow : Window
         selectedAnnotationId = null;
 
         RefreshSelectedAssetAnnotations();
+        LoadSelectedCropIntoEditor();
         UpdateUiState();
     }
 
@@ -553,6 +555,7 @@ public partial class MainWindow : Window
         }
 
         LoadSelectedAnnotationIntoEditor();
+        LoadSelectedCropIntoEditor();
         UpdateUiState();
     }
 
@@ -595,6 +598,46 @@ public partial class MainWindow : Window
                 Height = height
             }
         });
+    }
+
+    private void CropSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (isUpdatingUi || isChangingAssetSelection || GetSelectedImageRef() is not { } imageRef)
+        {
+            return;
+        }
+
+        var requestedWidth = CropWidthSlider.Value / 100;
+        var requestedHeight = CropHeightSlider.Value / 100;
+        var requestedX = CropXSlider.Value / 100;
+        var requestedY = CropYSlider.Value / 100;
+        var width = Math.Clamp(requestedWidth, 0.01, Math.Max(0.01, 1 - requestedX));
+        var height = Math.Clamp(requestedHeight, 0.01, Math.Max(0.01, 1 - requestedY));
+        var x = Math.Clamp(requestedX, 0, 1 - width);
+        var y = Math.Clamp(requestedY, 0, 1 - height);
+
+        UpdateSelectedImageRef(imageRef with
+        {
+            Crop = new ImageCropBounds
+            {
+                X = x,
+                Y = y,
+                Width = width,
+                Height = height
+            }
+        });
+    }
+
+    private void ClearCropButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (GetSelectedImageRef() is not { } imageRef)
+        {
+            return;
+        }
+
+        UpdateSelectedImageRef(imageRef with { Crop = null });
+        LoadSelectedCropIntoEditor();
+        SetStatus("Crop cleared for selected image.");
     }
 
     private void LabelStyle_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -996,6 +1039,11 @@ public partial class MainWindow : Window
         ImagePoolListBox.IsEnabled = isEnabled;
         InsertImageReferenceButton.IsEnabled = isEnabled;
         RemoveImageButton.IsEnabled = isEnabled;
+        ClearCropButton.IsEnabled = isEnabled;
+        CropXSlider.IsEnabled = isEnabled;
+        CropYSlider.IsEnabled = isEnabled;
+        CropWidthSlider.IsEnabled = isEnabled;
+        CropHeightSlider.IsEnabled = isEnabled;
         AddHighlightButton.IsEnabled = isEnabled;
         AddLabelButton.IsEnabled = isEnabled;
         AddArrowButton.IsEnabled = isEnabled;
@@ -1036,6 +1084,11 @@ public partial class MainWindow : Window
         ImagePoolListBox.IsEnabled = hasProject;
         InsertImageReferenceButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset;
         RemoveImageButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset;
+        ClearCropButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset && GetSelectedImageRef()?.Crop is not null;
+        CropXSlider.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset;
+        CropYSlider.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset;
+        CropWidthSlider.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset;
+        CropHeightSlider.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset;
         AddHighlightButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset;
         AddLabelButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset;
         AddArrowButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset;
@@ -1079,6 +1132,7 @@ public partial class MainWindow : Window
         isRefreshingAssets = false;
 
         RefreshSelectedAssetAnnotations();
+        LoadSelectedCropIntoEditor();
         UpdateUiState();
 
         Dispatcher.BeginInvoke(() => isChangingAssetSelection = false, DispatcherPriority.ContextIdle);
@@ -1261,10 +1315,12 @@ public partial class MainWindow : Window
                 continue;
             }
 
+            var imageRef = selectedStep.ImageRefs.FirstOrDefault(candidate => candidate.AssetId == asset.Id);
             selectedStepAssets.Add(EditableAsset.FromGuideAsset(
                 currentProject.ProjectDirectory,
                 asset,
-                selectedStep.Annotations.Where(annotation => annotation.AssetId == asset.Id)));
+                selectedStep.Annotations.Where(annotation => annotation.AssetId == asset.Id),
+                imageRef?.Crop));
         }
 
         var selectedAsset = selectedStepAssets.FirstOrDefault(asset => asset.Id == targetAssetId)
@@ -1322,6 +1378,38 @@ public partial class MainWindow : Window
         }
 
         return selectedStep.Annotations.FirstOrDefault(annotation => annotation.Id == annotationId);
+    }
+
+    private StepImageRef? GetSelectedImageRef()
+    {
+        if (GetSelectedStep() is not { } selectedStep || selectedAssetId is not { } assetId)
+        {
+            return null;
+        }
+
+        return selectedStep.ImageRefs.FirstOrDefault(imageRef => imageRef.AssetId == assetId);
+    }
+
+    private void UpdateSelectedImageRef(StepImageRef updatedImageRef)
+    {
+        var selectedStep = GetSelectedStep();
+        if (selectedStep is null)
+        {
+            return;
+        }
+
+        var index = selectedStep.ImageRefs.FindIndex(imageRef => imageRef.Id == updatedImageRef.Id);
+        if (index < 0)
+        {
+            return;
+        }
+
+        selectedStep.ImageRefs[index] = updatedImageRef;
+        selectedAssetId = updatedImageRef.AssetId;
+        RefreshSelectedStepAssets(updatedImageRef.AssetId);
+        LoadSelectedCropIntoEditor();
+        MarkDirty();
+        SetStatus("Crop updated for selected image.");
     }
 
     private void UpdateSelectedAnnotation(GuideAnnotation updatedAnnotation, bool reloadEditor = true, bool refreshAssets = true)
@@ -1407,12 +1495,41 @@ public partial class MainWindow : Window
         isUpdatingUi = false;
     }
 
+    private void LoadSelectedCropIntoEditor()
+    {
+        isUpdatingUi = true;
+
+        var crop = GetSelectedImageRef()?.Crop ?? new ImageCropBounds
+        {
+            X = 0,
+            Y = 0,
+            Width = 1,
+            Height = 1
+        };
+
+        ApplyCropSliderRanges(crop);
+        CropXSlider.Value = crop.X * 100;
+        CropYSlider.Value = crop.Y * 100;
+        CropWidthSlider.Value = crop.Width * 100;
+        CropHeightSlider.Value = crop.Height * 100;
+
+        isUpdatingUi = false;
+    }
+
     private void ApplyAnnotationSliderRanges(AnnotationBounds bounds)
     {
         AnnotationXSlider.Maximum = Math.Max(0, (1 - bounds.Width) * 100);
         AnnotationYSlider.Maximum = Math.Max(0, (1 - bounds.Height) * 100);
         AnnotationWidthSlider.Maximum = Math.Max(1, (1 - bounds.X) * 100);
         AnnotationHeightSlider.Maximum = Math.Max(1, (1 - bounds.Y) * 100);
+    }
+
+    private void ApplyCropSliderRanges(ImageCropBounds crop)
+    {
+        CropXSlider.Maximum = Math.Max(0, (1 - crop.Width) * 100);
+        CropYSlider.Maximum = Math.Max(0, (1 - crop.Height) * 100);
+        CropWidthSlider.Maximum = Math.Max(1, (1 - crop.X) * 100);
+        CropHeightSlider.Maximum = Math.Max(1, (1 - crop.Y) * 100);
     }
 
     private void LoadLabelStyleIntoEditor(GuideAnnotation? annotation)
@@ -1675,7 +1792,11 @@ public partial class MainWindow : Window
 
         public required string FullPath { get; init; }
 
+        public required ImageSource? DisplayImageSource { get; init; }
+
         public required string AnnotationSummary { get; init; }
+
+        public required string CropSummary { get; init; }
 
         public required IReadOnlyList<EditableAnnotationPreview> Annotations { get; init; }
 
@@ -1703,7 +1824,11 @@ public partial class MainWindow : Window
 
         public required double WorkspaceImageHeight { get; init; }
 
-        public static EditableAsset FromGuideAsset(string projectDirectory, GuideAsset asset, IEnumerable<GuideAnnotation> annotations)
+        public static EditableAsset FromGuideAsset(
+            string projectDirectory,
+            GuideAsset asset,
+            IEnumerable<GuideAnnotation> annotations,
+            ImageCropBounds? crop = null)
         {
             const double thumbFrameWidth = 96;
             const double thumbFrameHeight = 64;
@@ -1714,7 +1839,8 @@ public partial class MainWindow : Window
 
             var annotationList = annotations.ToArray();
             var fullPath = Path.Combine(projectDirectory, asset.RelativePath.Replace('/', Path.DirectorySeparatorChar));
-            var imageSize = ReadImageSize(fullPath);
+            var displayImage = CreateDisplayImage(fullPath, crop);
+            var imageSize = GetImageSize(displayImage) ?? ReadImageSize(fullPath);
             var thumbGeometry = CalculateFitGeometry(thumbFrameWidth, thumbFrameHeight, imageSize.Width, imageSize.Height);
             var editorGeometry = CalculateFitGeometry(editorFrameWidth, editorFrameHeight, imageSize.Width, imageSize.Height);
             var workspaceGeometry = CalculateFitGeometry(workspaceFrameWidth, workspaceFrameHeight, imageSize.Width, imageSize.Height);
@@ -1725,7 +1851,9 @@ public partial class MainWindow : Window
                 Caption = string.IsNullOrWhiteSpace(asset.Caption) ? Path.GetFileName(asset.RelativePath) : asset.Caption,
                 RelativePath = asset.RelativePath,
                 FullPath = fullPath,
+                DisplayImageSource = displayImage,
                 AnnotationSummary = annotationList.Length == 0 ? "No annotations" : $"{annotationList.Length} annotation(s)",
+                CropSummary = crop is null ? "Full image" : $"Crop X {ToPercent(crop.X)}, Y {ToPercent(crop.Y)}, W {ToPercent(crop.Width)}, H {ToPercent(crop.Height)}",
                 Annotations = annotationList.Select(annotation => EditableAnnotationPreview.FromGuideAnnotation(annotation, thumbGeometry, editorGeometry, workspaceGeometry)).ToArray(),
                 ThumbImageX = thumbGeometry.X,
                 ThumbImageY = thumbGeometry.Y,
@@ -1740,6 +1868,64 @@ public partial class MainWindow : Window
                 WorkspaceImageWidth = workspaceGeometry.Width,
                 WorkspaceImageHeight = workspaceGeometry.Height
             };
+        }
+
+        private static BitmapSource? CreateDisplayImage(string fullPath, ImageCropBounds? crop)
+        {
+            if (!File.Exists(fullPath))
+            {
+                return null;
+            }
+
+            try
+            {
+                var image = new BitmapImage();
+                image.BeginInit();
+                image.CacheOption = BitmapCacheOption.OnLoad;
+                image.UriSource = new Uri(fullPath);
+                image.EndInit();
+                image.Freeze();
+
+                if (crop is null)
+                {
+                    return image;
+                }
+
+                var cropRect = CalculateCropPixelRect(image.PixelWidth, image.PixelHeight, crop);
+                var croppedImage = new CroppedBitmap(image, cropRect);
+                croppedImage.Freeze();
+                return croppedImage;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static PreviewGeometry? GetImageSize(BitmapSource? image)
+        {
+            return image is null
+                ? null
+                : new PreviewGeometry(0, 0, image.PixelWidth, image.PixelHeight);
+        }
+
+        private static Int32Rect CalculateCropPixelRect(int imageWidth, int imageHeight, ImageCropBounds crop)
+        {
+            var left = ClampToRange((int)Math.Round(crop.X * imageWidth), 0, imageWidth - 1);
+            var top = ClampToRange((int)Math.Round(crop.Y * imageHeight), 0, imageHeight - 1);
+            var right = ClampToRange((int)Math.Round((crop.X + crop.Width) * imageWidth), left + 1, imageWidth);
+            var bottom = ClampToRange((int)Math.Round((crop.Y + crop.Height) * imageHeight), top + 1, imageHeight);
+            return new Int32Rect(left, top, right - left, bottom - top);
+        }
+
+        private static int ClampToRange(int value, int min, int max)
+        {
+            return Math.Min(max, Math.Max(min, value));
+        }
+
+        private static string ToPercent(double value)
+        {
+            return $"{value * 100:0}%";
         }
 
         private static PreviewGeometry ReadImageSize(string fullPath)
