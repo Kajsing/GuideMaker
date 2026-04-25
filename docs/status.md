@@ -6,7 +6,7 @@ Phase: Implementation
 
 Current milestone: Milestone 1 - Repo skeleton and core model
 
-Status: Initial repo skeleton created; full build/test validation awaits .NET 8 SDK on PATH.
+Status: Milestone 1 validation passes with .NET 8 SDK installed.
 
 ## Decision Log
 
@@ -22,6 +22,7 @@ Status: Initial repo skeleton created; full build/test validation awaits .NET 8 
 | 2026-04-25 | Root `AGENTS.md` added | Gives Codex stable repo-local instructions | Future sessions have concise scope, architecture, and validation guidance |
 | 2026-04-25 | Docs split into `docs/` | Makes project guidance easier to maintain | Large package remains as historical context |
 | 2026-04-25 | Original research package moved to `archive/` | Keeps repo root focused on active project files | `docs/` remains the source of current guidance |
+| 2026-04-25 | .NET 8 SDK installed and validation scripts hardened | Enables real build/test validation | `validate.ps1` now passes and opts out of .NET CLI telemetry |
 
 ## Open Blockers
 
@@ -34,8 +35,8 @@ Status: Initial repo skeleton created; full build/test validation awaits .NET 8 
 | Milestone | Status | Notes |
 |---|---|---|
 | 0 Research and decisions | Complete | Blockers resolved |
-| 1 Repo skeleton and core model | In progress | Initial skeleton created; awaiting .NET SDK validation |
-| 2 Storage layer hardening | Not started | Depends on Milestone 1 validation |
+| 1 Repo skeleton and core model | Complete | `validate.ps1` passes |
+| 2 Storage layer hardening | Ready | Next milestone |
 | 3 Markdown and HTML export | Not started | Basic exporter classes exist; hardening later |
 | 4 Basic UI shell | Not started | WPF shell exists; workflow not wired |
 | 5 Images and screenshot capture | Not started | MVP scope |
@@ -55,12 +56,13 @@ Status: Initial repo skeleton created; full build/test validation awaits .NET 8 
 | 2026-04-25 | `git diff --check` | Pass | After splitting current docs into `docs/` |
 | 2026-04-25 | docs blocker scan | Pass | No unresolved blocker markers found in `docs/*.md` |
 | 2026-04-25 | `git diff --check` | Pass | After moving research package to `archive/` |
+| 2026-04-25 | `winget install --id Microsoft.DotNet.SDK.8 --exact` | Pass | Installed .NET SDK 8.0.420 |
+| 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Restore/build/test passed; 2 tests passed |
 
 ## Known Risks
 
 | Risk | Severity | Mitigation |
 |---|---|---|
-| .NET SDK missing on current machine/PATH | High | Install .NET 8 SDK or add `dotnet.exe` to PATH, then run validation |
 | PDF export package choice | Medium | Choose free/local library during PDF milestone |
 | Screenshot capture complexity | Medium | Keep capture flow small and local-first |
 | Sensitive screenshots | High | Add export warning and basic redaction/blur if feasible |
@@ -68,7 +70,7 @@ Status: Initial repo skeleton created; full build/test validation awaits .NET 8 
 
 ## Next Recommended Step
 
-Install or expose .NET 8 SDK on PATH, then run:
+Start Milestone 2: harden the storage layer around project creation/open/save, malformed JSON, schema version checks, missing assets, and path safety.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1

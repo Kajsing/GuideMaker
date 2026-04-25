@@ -1,5 +1,6 @@
 using GuideMaker.Core;
 using GuideMaker.Storage;
+using Xunit;
 
 namespace GuideMaker.Tests;
 

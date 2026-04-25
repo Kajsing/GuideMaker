@@ -4,7 +4,7 @@
 
 Current milestone: Milestone 1 - Repo skeleton and core model.
 
-Status: in progress. Initial solution skeleton exists, but full build/test validation is blocked until the .NET 8 SDK is available on PATH.
+Status: in progress. Initial solution skeleton exists and validation now passes with .NET 8 SDK installed.
 
 ## Milestone 0 - Research And Decisions
 
@@ -19,7 +19,7 @@ Acceptance:
 
 ## Milestone 1 - Repo Skeleton And Core Model
 
-Status: in progress.
+Status: complete.
 
 Scope:
 
