@@ -75,6 +75,9 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | 2026-04-26 | Step image refs render only when referenced | Attaching a pool image to a step should make it available, not automatically print it in the guide | Steps with image refs now export only images explicitly placed with `[[image:...]]`; legacy `AssetIds` fallback remains readable |
 | 2026-04-26 | Basic crop editing added for step images | Follow-along and pool reuse need non-destructive crops per step | Selected step images can store crop bounds; the app previews the cropped image and export renders cropped generated assets without changing originals |
 | 2026-04-26 | Initial Follow Along Capture added | MVP needs screenshot capture while the user performs the workflow being documented | A selected step can start follow-along mode; GuideMaker minimizes, mouse clicks capture screenshots into the pool and attach them to the step, and restoring the app stops capture |
+| 2026-04-26 | Follow Along captures left, right, and middle clicks | Dropdown and context menu workflows can depend on non-left mouse buttons | Follow-along capture listens for mouse 1, 2, and 3 button-up events with debounce |
+| 2026-04-26 | Follow Along captures the screen under the mouse | Multi-monitor capture should avoid huge virtual-screen images and focus on the active workflow | Follow-along screenshots use the monitor containing the click; right-click capture is delayed briefly so context menus can render |
+| 2026-04-26 | Image workspace refresh made explicit | Binding through the step image list selected item could leave the Image workspace stale, and pool selection was not reflected | Selecting another step or pool image now directly refreshes the workspace image source, geometry, and annotation overlay |
 
 ## Open Blockers
 
@@ -168,6 +171,12 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | 2026-04-26 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Basic step image crop UI build; Release tests passed; 32 tests passed |
 | 2026-04-26 | `git diff --check` | Pass | Initial Follow Along Capture whitespace check clean |
 | 2026-04-26 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Initial Follow Along Capture build; Release tests passed; 32 tests passed |
+| 2026-04-26 | `git diff --check` | Pass | Follow Along multi-button capture whitespace check clean |
+| 2026-04-26 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Follow Along multi-button capture build; Release tests passed; 32 tests passed |
+| 2026-04-26 | `git diff --check` | Pass | Follow Along per-monitor capture and workspace refresh whitespace check clean |
+| 2026-04-26 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Follow Along per-monitor capture and workspace refresh build; Release tests passed; 32 tests passed |
+| 2026-04-26 | `git diff --check` | Pass | Step/Pool workspace image selection refresh whitespace check clean |
+| 2026-04-26 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Step/Pool workspace image selection refresh build; Release tests passed; 32 tests passed |
 
 ## Known Risks
 

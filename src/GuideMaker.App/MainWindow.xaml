@@ -343,9 +343,12 @@
                         </WrapPanel>
                     </DockPanel>
 
-                    <TabControl Grid.Row="5"
-                                MinHeight="180">
-                        <TabItem Header="Step">
+                    <TabControl x:Name="StepImagesTabControl"
+                                Grid.Row="5"
+                                MinHeight="180"
+                                SelectionChanged="StepImagesTabControl_SelectionChanged">
+                        <TabItem x:Name="StepImagesTab"
+                                 Header="Step">
                             <ListBox x:Name="StepAssetsListBox"
                                      ScrollViewer.VerticalScrollBarVisibility="Auto"
                                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
@@ -437,7 +440,8 @@
                                 </ListBox.ItemTemplate>
                             </ListBox>
                         </TabItem>
-                        <TabItem Header="Pool">
+                        <TabItem x:Name="PoolImagesTab"
+                                 Header="Pool">
                             <DockPanel Margin="0,6,0,0">
                                 <Button x:Name="AttachPoolImageButton"
                                         DockPanel.Dock="Top"
@@ -1005,14 +1009,10 @@
                                           PreviewMouseLeftButtonUp="WorkspaceImageSurface_PreviewMouseLeftButtonUp">
                                         <Canvas Width="760"
                                                 Height="520">
-                                            <Image Source="{Binding ElementName=StepAssetsListBox, Path=SelectedItem.DisplayImageSource}"
-                                                   Canvas.Left="{Binding ElementName=StepAssetsListBox, Path=SelectedItem.WorkspaceImageX}"
-                                                   Canvas.Top="{Binding ElementName=StepAssetsListBox, Path=SelectedItem.WorkspaceImageY}"
-                                                   Width="{Binding ElementName=StepAssetsListBox, Path=SelectedItem.WorkspaceImageWidth}"
-                                                   Height="{Binding ElementName=StepAssetsListBox, Path=SelectedItem.WorkspaceImageHeight}"
+                                            <Image x:Name="WorkspaceSelectedImage"
                                                    Stretch="Fill" />
                                         </Canvas>
-                                        <ItemsControl ItemsSource="{Binding ElementName=StepAssetsListBox, Path=SelectedItem.Annotations}">
+                                        <ItemsControl x:Name="WorkspaceAnnotationOverlay">
                                             <ItemsControl.ItemsPanel>
                                                 <ItemsPanelTemplate>
                                                     <Canvas Width="760"

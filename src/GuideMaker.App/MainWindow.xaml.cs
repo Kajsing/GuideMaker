@@ -22,6 +22,8 @@ public partial class MainWindow : Window
 {
     private const int WhMouseLl = 14;
     private const int WmLButtonUp = 0x0202;
+    private const int WmRButtonUp = 0x0205;
+    private const int WmMButtonUp = 0x0208;
 
     private readonly GuideProjectStore projectStore = new();
     private readonly GuideAssetFileStore assetFileStore = new();
@@ -396,15 +398,27 @@ public partial class MainWindow : Window
 
     private IntPtr FollowAlongMouseHookCallback(int nCode, IntPtr wParam, IntPtr lParam)
     {
-        if (nCode >= 0 && wParam == WmLButtonUp && isFollowAlongCaptureActive)
+        if (nCode >= 0 && IsFollowAlongCaptureClick(wParam) && isFollowAlongCaptureActive)
         {
-            Dispatcher.BeginInvoke(CaptureFollowAlongScreenshotAsync, DispatcherPriority.Background);
+            var hookInfo = Marshal.PtrToStructure<LowLevelMouseHookStruct>(lParam);
+            var screen = Forms.Screen.FromPoint(new Drawing.Point(hookInfo.Point.X, hookInfo.Point.Y));
+            var delay = wParam == WmRButtonUp ? 250 : 140;
+            Dispatcher.BeginInvoke(
+                () => CaptureFollowAlongScreenshotAsync(screen, delay),
+                DispatcherPriority.Background);
         }
 
         return CallNextHookEx(followAlongMouseHookHandle, nCode, wParam, lParam);
     }
 
-    private async Task CaptureFollowAlongScreenshotAsync()
+    private static bool IsFollowAlongCaptureClick(IntPtr message)
+    {
+        return message == WmLButtonUp ||
+            message == WmRButtonUp ||
+            message == WmMButtonUp;
+    }
+
+    private async Task CaptureFollowAlongScreenshotAsync(Forms.Screen screen, int delayMilliseconds)
     {
         if (!isFollowAlongCaptureActive ||
             isFollowAlongCaptureSaving ||
@@ -426,7 +440,17 @@ public partial class MainWindow : Window
 
         try
         {
-            await using var stream = CaptureVirtualScreenPng();
+            if (delayMilliseconds > 0)
+            {
+                await Task.Delay(delayMilliseconds).ConfigureAwait(true);
+            }
+
+            if (!isFollowAlongCaptureActive || currentProject is null || WindowState != WindowState.Minimized)
+            {
+                return;
+            }
+
+            await using var stream = CaptureScreenPng(screen);
             var asset = await assetFileStore.SavePngAsync(
                     currentProject,
                     $"follow {DateTime.Now:yyyyMMdd-HHmmss-fff}",
@@ -649,6 +673,7 @@ public partial class MainWindow : Window
 
         selectedAnnotationId = null;
 
+        RefreshWorkspaceImagePreview();
         RefreshSelectedAssetAnnotations();
         LoadSelectedCropIntoEditor();
         UpdateUiState();
@@ -656,11 +681,31 @@ public partial class MainWindow : Window
 
     private void ImagePoolListBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
-        selectedPoolAssetId = ImagePoolListBox.SelectedItem is EditableAsset selectedAsset
-            ? selectedAsset.Id
-            : null;
+        var selectedAsset = ImagePoolListBox.SelectedItem as EditableAsset;
+        selectedPoolAssetId = selectedAsset?.Id;
+
+        if (StepImagesTabControl.SelectedItem == PoolImagesTab)
+        {
+            RefreshWorkspaceImagePreview(selectedAsset);
+        }
 
         UpdateUiState();
+    }
+
+    private void StepImagesTabControl_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (sender != StepImagesTabControl)
+        {
+            return;
+        }
+
+        if (StepImagesTabControl.SelectedItem == PoolImagesTab)
+        {
+            RefreshWorkspaceImagePreview(ImagePoolListBox.SelectedItem as EditableAsset);
+            return;
+        }
+
+        RefreshWorkspaceImagePreview();
     }
 
     private void AnnotationListBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
@@ -1269,6 +1314,7 @@ public partial class MainWindow : Window
         StepAssetsListBox.SelectedItem = selectedStepAssets.FirstOrDefault(asset => asset.Id == assetId);
         isRefreshingAssets = false;
 
+        RefreshWorkspaceImagePreview();
         RefreshSelectedAssetAnnotations();
         LoadSelectedCropIntoEditor();
         UpdateUiState();
@@ -1441,6 +1487,7 @@ public partial class MainWindow : Window
             selectedAssetId = null;
             selectedAnnotationId = null;
             StepAssetsListBox.SelectedItem = null;
+            RefreshWorkspaceImagePreview();
             isRefreshingAssets = false;
             return;
         }
@@ -1470,7 +1517,19 @@ public partial class MainWindow : Window
         }
 
         StepAssetsListBox.SelectedItem = selectedAsset;
+        RefreshWorkspaceImagePreview();
         isRefreshingAssets = false;
+    }
+
+    private void RefreshWorkspaceImagePreview(EditableAsset? selectedAsset = null)
+    {
+        selectedAsset ??= GetSelectedEditableAsset();
+        WorkspaceSelectedImage.Source = selectedAsset?.DisplayImageSource;
+        WorkspaceSelectedImage.Width = selectedAsset?.WorkspaceImageWidth ?? 0;
+        WorkspaceSelectedImage.Height = selectedAsset?.WorkspaceImageHeight ?? 0;
+        System.Windows.Controls.Canvas.SetLeft(WorkspaceSelectedImage, selectedAsset?.WorkspaceImageX ?? 0);
+        System.Windows.Controls.Canvas.SetTop(WorkspaceSelectedImage, selectedAsset?.WorkspaceImageY ?? 0);
+        WorkspaceAnnotationOverlay.ItemsSource = selectedAsset?.Annotations ?? Array.Empty<EditableAnnotationPreview>();
     }
 
     private void RefreshSelectedAssetAnnotations(Guid? preferredAnnotationId = null, bool reloadEditor = true)
@@ -1734,6 +1793,16 @@ public partial class MainWindow : Window
     private static MemoryStream CaptureVirtualScreenPng()
     {
         var bounds = Forms.SystemInformation.VirtualScreen;
+        return CaptureBoundsPng(bounds);
+    }
+
+    private static MemoryStream CaptureScreenPng(Forms.Screen screen)
+    {
+        return CaptureBoundsPng(screen.Bounds);
+    }
+
+    private static MemoryStream CaptureBoundsPng(Drawing.Rectangle bounds)
+    {
         using var bitmap = new Drawing.Bitmap(bounds.Width, bounds.Height);
         using var graphics = Drawing.Graphics.FromImage(bitmap);
         graphics.CopyFromScreen(bounds.Left, bounds.Top, 0, 0, bounds.Size);
@@ -1753,6 +1822,28 @@ public partial class MainWindow : Window
     }
 
     private delegate IntPtr LowLevelMouseProc(int nCode, IntPtr wParam, IntPtr lParam);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private readonly struct NativePoint
+    {
+        public readonly int X;
+
+        public readonly int Y;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private readonly struct LowLevelMouseHookStruct
+    {
+        public readonly NativePoint Point;
+
+        public readonly int MouseData;
+
+        public readonly int Flags;
+
+        public readonly int Time;
+
+        public readonly IntPtr ExtraInfo;
+    }
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern IntPtr SetWindowsHookEx(int idHook, LowLevelMouseProc lpfn, IntPtr hMod, uint dwThreadId);
