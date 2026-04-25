@@ -66,6 +66,8 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | 2026-04-25 | Image pool and per-step image refs selected as next architecture step | Follow-along capture and crop need reusable originals and per-step usage data | Add migration-compatible `StepImageRef`, keep originals in the pool, and render crop/annotations into generated export assets |
 | 2026-04-25 | Migration-compatible step image refs added | The app needs reusable original images before follow-along capture and crop editing | `GuideStep.ImageRefs`, optional crop bounds, per-ref annotations, and storage validation now coexist with legacy `AssetIds` |
 | 2026-04-25 | Export rendering prefers step image refs | Cropped/reused images need their own generated output instead of mutating originals | Export assets now render per-step image refs with crop and annotations while legacy asset export remains readable |
+| 2026-04-25 | App save/load bridges legacy images to step image refs | The UI still edits step image lists while storage needs the new per-step image reference model | Imported, pasted, and captured images now get `StepImageRef` entries; older projects migrate into refs when saved |
+| 2026-04-25 | Step image ref body tokens map to rendered images | Smoke testing showed original images could export without annotations and then repeat later in the step | `[[image:...]]` tokens in steps with image refs now target the rendered image-ref asset and no longer force original legacy image export |
 
 ## Open Blockers
 
@@ -85,7 +87,7 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | 5 Images and screenshot capture | Complete | Import, paste, capture, attach, and preview wired |
 | 6 Basic annotation | Complete | Highlight, label, arrow, redaction overlays wired |
 | 7 PDF export and preview | Complete | PDFsharp export, local preview, and export warning added |
-| 8 MVP hardening | In progress | Image pool model/storage/export slices are in place; UI image pool, follow-along capture, crop, annotation editor polish, rotate controls, and final polish remain |
+| 8 MVP hardening | In progress | Image pool model/storage/export and app save/load bridge slices are in place; visible image pool UI, follow-along capture, crop, annotation editor polish, rotate controls, and final polish remain |
 
 ## Validation Log
 
@@ -143,6 +145,10 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Step image ref model/storage validation build; Release tests passed; 28 tests passed after closing a running app process that locked build outputs |
 | 2026-04-25 | `git diff --check` | Pass | Step image ref export migration whitespace check clean |
 | 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Step image ref export migration build; Release tests passed; 29 tests passed |
+| 2026-04-25 | `git diff --check` | Pass | App step image ref bridge whitespace check clean |
+| 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | App step image ref bridge build; Release tests passed; 29 tests passed after closing a running app process that locked build outputs |
+| 2026-04-25 | `git diff --check` | Pass | Step image ref body token export fix whitespace check clean |
+| 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Step image ref body token export fix build; Release tests passed; 29 tests passed |
 
 ## Known Risks
 
@@ -156,6 +162,8 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | Image pool migration complexity | Medium | Implement migration-compatible model first, then move storage/export/UI in small slices |
 | Annotation placement still needs richer direct manipulation | Medium | Basic drag-to-move is added; resize handles and rotate controls remain |
 | Annotation editor UI is getting crowded | Medium | Add hide/show or collapsible surfaces during M8 hardening |
+| Image list navigation is cramped | Medium | Rework Images area during image pool UI so three or more images are easy to scan and the scrollbar feels natural |
+| Image workspace does not fit large images well | Medium | Make the right-side Image workspace fit the available pane better before adding crop/resize handles |
 
 ## Known M8 Bugs
 
@@ -166,10 +174,12 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | Redact uses solid burn-in, not blur | Medium | Exported Markdown, HTML, and PDF now use generated images with annotations burned in. Redaction is solid dark masking; true blur can be added later if needed. |
 | Annotation percentage sliders are confusing | Medium | X/Y/Width/Height values interact awkwardly and should be redesigned or replaced with direct manipulation handles. |
 | Annotation controls are still clunky | Medium | Current compact buttons are better grouped but should become a cleaner tool strip or collapsible tool surface. |
+| Arrow annotation previews as a plain line | Medium | Arrow should render with a clear arrow head in the app workspace and exported output. |
+| Annotation X/Y behavior should use top-left origin | Medium | X/Y should consistently mean the annotation's top-left corner, with width/height changes preserving that anchor. |
 
 ## Next Recommended Step
 
-Continue Milestone 8 image pool migration by refactoring app state to separate the reusable image pool from selected-step image references.
+Smoke test the app save/load bridge, then continue Milestone 8 image pool migration by refactoring the visible UI to separate the reusable image pool from selected-step image references.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1

@@ -35,6 +35,7 @@ public sealed class ExportAssetRenderer
             StringComparer.OrdinalIgnoreCase);
         var legacyAssetIds = FindLegacyAssetIds(document, sourceAssetsByPath);
         var imageRefAssetIds = new Dictionary<Guid, Guid>();
+        var imageRefPathMap = new Dictionary<Guid, string>();
 
         foreach (var asset in document.Assets.Where(asset => legacyAssetIds.Contains(asset.Id)))
         {
@@ -74,6 +75,7 @@ public sealed class ExportAssetRenderer
                     imageRef.Crop,
                     usedFileNames);
                 imageRefAssetIds[imageRef.Id] = imageRef.Id;
+                imageRefPathMap[imageRef.Id] = exportedRelativePath;
                 renderedAssets.Add(sourceAsset with
                 {
                     Id = imageRef.Id,
@@ -87,7 +89,9 @@ public sealed class ExportAssetRenderer
             Assets = renderedAssets,
             Steps = document.Steps.Select(step => step with
             {
-                Body = ReplaceImageReferences(step.Body, document.Assets, assetPathMap),
+                Body = step.ImageRefs.Count > 0
+                    ? ReplaceImageReferencesForStepImageRefs(step.Body, step.ImageRefs, document.Assets, imageRefPathMap)
+                    : ReplaceImageReferences(step.Body, document.Assets, assetPathMap),
                 AssetIds = step.ImageRefs.Count > 0
                     ? step.ImageRefs
                         .Where(imageRef => imageRefAssetIds.ContainsKey(imageRef.Id))
@@ -267,6 +271,48 @@ public sealed class ExportAssetRenderer
         return updatedBody;
     }
 
+    private static string ReplaceImageReferencesForStepImageRefs(
+        string body,
+        IReadOnlyCollection<StepImageRef> imageRefs,
+        IReadOnlyCollection<GuideAsset> sourceAssets,
+        IReadOnlyDictionary<Guid, string> imageRefPathMap)
+    {
+        var sourceAssetsById = sourceAssets.ToDictionary(asset => asset.Id);
+        var imageRefsByPath = new Dictionary<string, Queue<StepImageRef>>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var imageRef in imageRefs)
+        {
+            if (!sourceAssetsById.TryGetValue(imageRef.AssetId, out var sourceAsset) ||
+                !imageRefPathMap.ContainsKey(imageRef.Id))
+            {
+                continue;
+            }
+
+            var sourcePath = NormalizeAssetPath(sourceAsset.RelativePath);
+            if (!imageRefsByPath.TryGetValue(sourcePath, out var queue))
+            {
+                queue = new Queue<StepImageRef>();
+                imageRefsByPath[sourcePath] = queue;
+            }
+
+            queue.Enqueue(imageRef);
+        }
+
+        return ImageReferenceRegex.Replace(body, match =>
+        {
+            var relativePath = NormalizeAssetPath(match.Groups["path"].Value);
+            if (!imageRefsByPath.TryGetValue(relativePath, out var queue) || queue.Count == 0)
+            {
+                return match.Value;
+            }
+
+            var imageRef = queue.Count > 1 ? queue.Dequeue() : queue.Peek();
+            return imageRefPathMap.TryGetValue(imageRef.Id, out var exportedPath)
+                ? $"[[image:{exportedPath}]]"
+                : match.Value;
+        });
+    }
+
     private static HashSet<Guid> FindLegacyAssetIds(
         GuideDocument document,
         IReadOnlyDictionary<string, GuideAsset> sourceAssetsByPath)
@@ -281,14 +327,14 @@ public sealed class ExportAssetRenderer
                 {
                     assetIds.Add(assetId);
                 }
-            }
 
-            foreach (Match match in ImageReferenceRegex.Matches(step.Body))
-            {
-                var relativePath = NormalizeAssetPath(match.Groups["path"].Value);
-                if (sourceAssetsByPath.TryGetValue(relativePath, out var asset))
+                foreach (Match match in ImageReferenceRegex.Matches(step.Body))
                 {
-                    assetIds.Add(asset.Id);
+                    var relativePath = NormalizeAssetPath(match.Groups["path"].Value);
+                    if (sourceAssetsByPath.TryGetValue(relativePath, out var asset))
+                    {
+                        assetIds.Add(asset.Id);
+                    }
                 }
             }
         }

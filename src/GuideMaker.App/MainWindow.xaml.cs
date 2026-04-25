@@ -327,6 +327,13 @@ public partial class MainWindow : Window
         }
 
         selectedStep.AssetIds.Remove(selectedAsset.Id);
+        var imageRef = selectedStep.ImageRefs.FirstOrDefault(candidate => candidate.AssetId == selectedAsset.Id);
+        if (imageRef is not null)
+        {
+            selectedStep.ImageRefs.Remove(imageRef);
+        }
+
+        selectedStep.Annotations.RemoveAll(annotation => annotation.AssetId == selectedAsset.Id);
         selectedAssetId = selectedStep.AssetIds.Count > 0 ? selectedStep.AssetIds[0] : null;
         selectedAnnotationId = null;
         RefreshSelectedStepAssets();
@@ -1039,6 +1046,7 @@ public partial class MainWindow : Window
     {
         currentAssets.Add(asset);
         step.AssetIds.Add(asset.Id);
+        step.ImageRefs.Add(StepImageRef.Create(asset.Id));
         selectedAssetId = asset.Id;
         selectedAnnotationId = null;
         RefreshSelectedStepAssets();
@@ -1477,23 +1485,37 @@ public partial class MainWindow : Window
 
         public List<Guid> AssetIds { get; init; } = [];
 
+        public List<StepImageRef> ImageRefs { get; init; } = [];
+
         public List<GuideAnnotation> Annotations { get; init; } = [];
 
         public static EditableStep FromGuideStep(GuideStep step)
         {
+            var imageRefs = step.ImageRefs.Count > 0
+                ? step.ImageRefs.Select(CloneImageRef).ToList()
+                : CreateImageRefsFromLegacyStep(step);
+            var assetIds = imageRefs.Count > 0
+                ? imageRefs.Select(imageRef => imageRef.AssetId).ToList()
+                : [.. step.AssetIds];
+            var annotations = imageRefs.Count > 0
+                ? imageRefs.SelectMany(imageRef => imageRef.Annotations).ToList()
+                : [.. step.Annotations];
+
             return new EditableStep
             {
                 Id = step.Id,
                 Order = step.Order,
                 Title = step.Title,
                 Body = step.Body,
-                AssetIds = [.. step.AssetIds],
-                Annotations = [.. step.Annotations]
+                AssetIds = assetIds,
+                ImageRefs = imageRefs,
+                Annotations = annotations
             };
         }
 
         public GuideStep ToGuideStep()
         {
+            var imageRefs = BuildImageRefs();
             return new GuideStep
             {
                 Id = Id,
@@ -1501,7 +1523,54 @@ public partial class MainWindow : Window
                 Title = string.IsNullOrWhiteSpace(Title) ? "Untitled step" : Title.Trim(),
                 Body = Body,
                 AssetIds = [.. AssetIds],
+                ImageRefs = imageRefs,
                 Annotations = [.. Annotations]
+            };
+        }
+
+        private List<StepImageRef> BuildImageRefs()
+        {
+            var existingRefsByAssetId = ImageRefs
+                .GroupBy(imageRef => imageRef.AssetId)
+                .ToDictionary(
+                    group => group.Key,
+                    group => new Queue<StepImageRef>(group.Select(CloneImageRef)));
+            var imageRefs = new List<StepImageRef>();
+
+            foreach (var assetId in AssetIds)
+            {
+                var imageRef = existingRefsByAssetId.TryGetValue(assetId, out var queue) && queue.Count > 0
+                    ? queue.Dequeue()
+                    : StepImageRef.Create(assetId);
+                imageRefs.Add(imageRef with
+                {
+                    AssetId = assetId,
+                    Annotations = Annotations
+                        .Where(annotation => annotation.AssetId == assetId)
+                        .ToList()
+                });
+            }
+
+            return imageRefs;
+        }
+
+        private static List<StepImageRef> CreateImageRefsFromLegacyStep(GuideStep step)
+        {
+            return step.AssetIds
+                .Select(assetId => StepImageRef.Create(assetId) with
+                {
+                    Annotations = step.Annotations
+                        .Where(annotation => annotation.AssetId == assetId)
+                        .ToList()
+                })
+                .ToList();
+        }
+
+        private static StepImageRef CloneImageRef(StepImageRef imageRef)
+        {
+            return imageRef with
+            {
+                Annotations = [.. imageRef.Annotations]
             };
         }
 

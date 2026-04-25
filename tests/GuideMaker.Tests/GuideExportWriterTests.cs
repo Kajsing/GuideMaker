@@ -173,7 +173,7 @@ public sealed class GuideExportWriterTests
         {
             Steps =
             [
-                GuideStep.Create(1, "Use cropped screen", "Only the relevant area is shown.") with
+                GuideStep.Create(1, "Use cropped screen", "Before.\n[[image:assets/screen.png]]\nAfter.") with
                 {
                     ImageRefs =
                     [
@@ -235,9 +235,13 @@ public sealed class GuideExportWriterTests
             var html = await File.ReadAllTextAsync(result.HtmlPath);
 
             Assert.True(File.Exists(renderedImagePath));
+            Assert.Contains("Before.", markdown);
             Assert.Contains("![Cropped screen](assets/screen.png)", markdown);
+            Assert.Contains("After.", markdown);
             Assert.Contains("<img src=\"assets/screen.png\" alt=\"Cropped screen\">", html);
             Assert.DoesNotContain("class=\"guide-annotation guide-annotation-blur\"", html);
+            Assert.Equal(1, CountOccurrences(markdown, "![Cropped screen](assets/screen.png)"));
+            Assert.Equal(1, CountOccurrences(html, "<img src=\"assets/screen.png\""));
 
             var renderedDimensions = ReadPngDimensions(await File.ReadAllBytesAsync(renderedImagePath));
             Assert.Equal(2, renderedDimensions.Width);
@@ -250,6 +254,20 @@ public sealed class GuideExportWriterTests
                 Directory.Delete(projectDirectory, recursive: true);
             }
         }
+    }
+
+    private static int CountOccurrences(string value, string search)
+    {
+        var count = 0;
+        var index = 0;
+
+        while ((index = value.IndexOf(search, index, StringComparison.Ordinal)) >= 0)
+        {
+            count++;
+            index += search.Length;
+        }
+
+        return count;
     }
 
     private static (int Width, int Height) ReadPngDimensions(byte[] pngBytes)
