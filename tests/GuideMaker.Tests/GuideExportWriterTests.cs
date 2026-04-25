@@ -256,6 +256,64 @@ public sealed class GuideExportWriterTests
         }
     }
 
+    [Fact]
+    public async Task ExportAsync_WhenStepImageRefIsNotReferencedInBody_DoesNotRenderImageInGuide()
+    {
+        var projectDirectory = Path.Combine(Path.GetTempPath(), "GuideMaker.Tests", Guid.NewGuid().ToString("N"));
+        var assetId = Guid.NewGuid();
+        var assetDirectory = Path.Combine(projectDirectory, GuideProjectLayout.AssetsDirectoryName);
+        var sourceImagePath = Path.Combine(assetDirectory, "screen.png");
+        var document = GuideDocument.Create("Pool guide", "Codex") with
+        {
+            Steps =
+            [
+                GuideStep.Create(1, "Describe only", "No image token here.") with
+                {
+                    ImageRefs =
+                    [
+                        StepImageRef.Create(assetId)
+                    ]
+                }
+            ],
+            Assets =
+            [
+                new GuideAsset
+                {
+                    Id = assetId,
+                    RelativePath = "assets/screen.png",
+                    Kind = GuideAssetKind.Screenshot,
+                    Caption = "Pool image",
+                    CapturedAt = DateTimeOffset.UtcNow
+                }
+            ]
+        };
+
+        try
+        {
+            Directory.CreateDirectory(assetDirectory);
+            await File.WriteAllBytesAsync(
+                sourceImagePath,
+                Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAQAAAACCAYAAAB/qH1jAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAOSURBVBhXY/iPBhjQBQAeIB/hYG4BMQAAAABJRU5ErkJggg=="));
+
+            var result = await new GuideExportWriter().ExportAsync(projectDirectory, document);
+
+            var markdown = await File.ReadAllTextAsync(result.MarkdownPath);
+            var html = await File.ReadAllTextAsync(result.HtmlPath);
+
+            Assert.Contains("No image token here.", markdown);
+            Assert.Contains("<p>No image token here.</p>", html);
+            Assert.DoesNotContain("![Pool image]", markdown);
+            Assert.DoesNotContain("<img src=\"assets/screen.png\"", html);
+        }
+        finally
+        {
+            if (Directory.Exists(projectDirectory))
+            {
+                Directory.Delete(projectDirectory, recursive: true);
+            }
+        }
+    }
+
     private static int CountOccurrences(string value, string search)
     {
         var count = 0;

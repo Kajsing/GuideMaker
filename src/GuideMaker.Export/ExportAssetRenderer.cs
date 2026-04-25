@@ -89,19 +89,43 @@ public sealed class ExportAssetRenderer
             Assets = renderedAssets,
             Steps = document.Steps.Select(step => step with
             {
-                Body = step.ImageRefs.Count > 0
-                    ? ReplaceImageReferencesForStepImageRefs(step.Body, step.ImageRefs, document.Assets, imageRefPathMap)
-                    : ReplaceImageReferences(step.Body, document.Assets, assetPathMap),
+                Body = ReplaceStepBodyImageReferences(
+                    step,
+                    document.Assets,
+                    assetPathMap,
+                    imageRefPathMap,
+                    out var referencedImageRefIds),
                 AssetIds = step.ImageRefs.Count > 0
-                    ? step.ImageRefs
-                        .Where(imageRef => imageRefAssetIds.ContainsKey(imageRef.Id))
-                        .Select(imageRef => imageRefAssetIds[imageRef.Id])
+                    ? referencedImageRefIds
+                        .Where(imageRefAssetIds.ContainsKey)
+                        .Select(imageRefId => imageRefAssetIds[imageRefId])
                         .ToList()
                     : step.AssetIds,
                 ImageRefs = [],
                 Annotations = []
             }).ToList()
         };
+    }
+
+    private static string ReplaceStepBodyImageReferences(
+        GuideStep step,
+        IReadOnlyCollection<GuideAsset> sourceAssets,
+        IReadOnlyDictionary<Guid, string> assetPathMap,
+        IReadOnlyDictionary<Guid, string> imageRefPathMap,
+        out HashSet<Guid> referencedImageRefIds)
+    {
+        if (step.ImageRefs.Count > 0)
+        {
+            return ReplaceImageReferencesForStepImageRefs(
+                step.Body,
+                step.ImageRefs,
+                sourceAssets,
+                imageRefPathMap,
+                out referencedImageRefIds);
+        }
+
+        referencedImageRefIds = [];
+        return ReplaceImageReferences(step.Body, sourceAssets, assetPathMap);
     }
 
     private static string RenderExportAsset(
@@ -275,8 +299,10 @@ public sealed class ExportAssetRenderer
         string body,
         IReadOnlyCollection<StepImageRef> imageRefs,
         IReadOnlyCollection<GuideAsset> sourceAssets,
-        IReadOnlyDictionary<Guid, string> imageRefPathMap)
+        IReadOnlyDictionary<Guid, string> imageRefPathMap,
+        out HashSet<Guid> referencedImageRefIds)
     {
+        var referencedIds = new HashSet<Guid>();
         var sourceAssetsById = sourceAssets.ToDictionary(asset => asset.Id);
         var imageRefsByPath = new Dictionary<string, Queue<StepImageRef>>(StringComparer.OrdinalIgnoreCase);
 
@@ -298,7 +324,7 @@ public sealed class ExportAssetRenderer
             queue.Enqueue(imageRef);
         }
 
-        return ImageReferenceRegex.Replace(body, match =>
+        var renderedBody = ImageReferenceRegex.Replace(body, match =>
         {
             var relativePath = NormalizeAssetPath(match.Groups["path"].Value);
             if (!imageRefsByPath.TryGetValue(relativePath, out var queue) || queue.Count == 0)
@@ -307,10 +333,17 @@ public sealed class ExportAssetRenderer
             }
 
             var imageRef = queue.Count > 1 ? queue.Dequeue() : queue.Peek();
-            return imageRefPathMap.TryGetValue(imageRef.Id, out var exportedPath)
-                ? $"[[image:{exportedPath}]]"
-                : match.Value;
+            if (!imageRefPathMap.TryGetValue(imageRef.Id, out var exportedPath))
+            {
+                return match.Value;
+            }
+
+            referencedIds.Add(imageRef.Id);
+            return $"[[image:{exportedPath}]]";
         });
+
+        referencedImageRefIds = referencedIds;
+        return renderedBody;
     }
 
     private static HashSet<Guid> FindLegacyAssetIds(

@@ -22,8 +22,10 @@ public partial class MainWindow : Window
     private readonly GuideAssetFileStore assetFileStore = new();
     private readonly GuideExportWriter exportWriter = new();
     private readonly HtmlGuideExporter previewExporter = new();
+    private readonly ExportAssetRenderer previewAssetRenderer = new();
     private readonly ObservableCollection<EditableStep> steps = [];
     private readonly ObservableCollection<EditableAsset> selectedStepAssets = [];
+    private readonly ObservableCollection<EditableAsset> imagePoolAssets = [];
     private readonly ObservableCollection<EditableAnnotation> selectedAssetAnnotations = [];
     private readonly DispatcherTimer guidePreviewRefreshTimer = new()
     {
@@ -34,6 +36,7 @@ public partial class MainWindow : Window
     private GuideMetadata? currentMetadata;
     private List<GuideAsset> currentAssets = [];
     private Guid? selectedAssetId;
+    private Guid? selectedPoolAssetId;
     private Guid? selectedAnnotationId;
     private Guid? draggedAnnotationId;
     private System.Windows.Point annotationDragOffset;
@@ -52,6 +55,7 @@ public partial class MainWindow : Window
 
         StepsListBox.ItemsSource = steps;
         StepAssetsListBox.ItemsSource = selectedStepAssets;
+        ImagePoolListBox.ItemsSource = imagePoolAssets;
         AnnotationListBox.ItemsSource = selectedAssetAnnotations;
         guidePreviewRefreshTimer.Tick += GuidePreviewRefreshTimer_Tick;
         ApplyTheme(isDarkMode);
@@ -253,8 +257,8 @@ public partial class MainWindow : Window
             }
 
             SetStatus(dialog.FileNames.Length == 1
-                ? "Image imported and attached to selected step."
-                : $"{dialog.FileNames.Length} images imported and attached to selected step.");
+                ? "Image imported to pool and attached to selected step."
+                : $"{dialog.FileNames.Length} images imported to pool and attached to selected step.");
         }).ConfigureAwait(true);
     }
 
@@ -283,7 +287,7 @@ public partial class MainWindow : Window
             await using var stream = EncodePng(image);
             var asset = await assetFileStore.SavePngAsync(currentProject, "clipboard image", stream).ConfigureAwait(true);
             AttachAssetToStep(selectedStep, asset);
-            SetStatus("Clipboard image attached to selected step.");
+            SetStatus("Clipboard image added to pool and attached to selected step.");
         }).ConfigureAwait(true);
     }
 
@@ -307,7 +311,7 @@ public partial class MainWindow : Window
                     .ConfigureAwait(true);
                 AttachAssetToStep(selectedStep, asset);
 
-                SetStatus("Screenshot captured and attached to selected step.");
+                SetStatus("Screenshot captured to pool and attached to selected step.");
             }
             finally
             {
@@ -340,6 +344,24 @@ public partial class MainWindow : Window
         RefreshSelectedAssetAnnotations();
         MarkDirty();
         SetStatus("Image detached from selected step.");
+    }
+
+    private void AttachPoolImageButton_Click(object sender, RoutedEventArgs e)
+    {
+        var selectedStep = GetSelectedStep();
+        if (selectedStep is null || selectedPoolAssetId is not { } assetId)
+        {
+            return;
+        }
+
+        var asset = currentAssets.FirstOrDefault(candidate => candidate.Id == assetId);
+        if (asset is null)
+        {
+            return;
+        }
+
+        AttachAssetToStep(selectedStep, asset);
+        SetStatus("Pool image attached to selected step.");
     }
 
     private void AddHighlightButton_Click(object sender, RoutedEventArgs e)
@@ -502,6 +524,15 @@ public partial class MainWindow : Window
         selectedAnnotationId = null;
 
         RefreshSelectedAssetAnnotations();
+        UpdateUiState();
+    }
+
+    private void ImagePoolListBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        selectedPoolAssetId = ImagePoolListBox.SelectedItem is EditableAsset selectedAsset
+            ? selectedAsset.Id
+            : null;
+
         UpdateUiState();
     }
 
@@ -769,7 +800,11 @@ public partial class MainWindow : Window
         Directory.CreateDirectory(exportsDirectory);
 
         var previewPath = Path.Combine(exportsDirectory, "preview.html");
-        await File.WriteAllTextAsync(previewPath, previewExporter.Export(BuildDocumentFromUi(), "../"), cancellationToken)
+        var previewDocument = previewAssetRenderer.RenderExportAssets(
+            currentProject.ProjectDirectory,
+            exportsDirectory,
+            BuildDocumentFromUi());
+        await File.WriteAllTextAsync(previewPath, previewExporter.Export(previewDocument), cancellationToken)
             .ConfigureAwait(true);
 
         return previewPath;
@@ -824,6 +859,7 @@ public partial class MainWindow : Window
         currentMetadata = project.Document.Metadata;
         currentAssets = [.. project.Document.Assets];
         selectedAssetId = null;
+        selectedPoolAssetId = null;
         selectedAnnotationId = null;
 
         GuideTitleTextBox.Text = project.Document.Metadata.Title;
@@ -836,6 +872,7 @@ public partial class MainWindow : Window
 
         StepsListBox.SelectedIndex = steps.Count > 0 ? 0 : -1;
         LoadSelectedStepIntoEditor();
+        RefreshImagePoolAssets();
         RefreshSelectedStepAssets();
         RefreshSelectedAssetAnnotations();
 
@@ -955,6 +992,8 @@ public partial class MainWindow : Window
         ImportImageButton.IsEnabled = isEnabled;
         PasteImageButton.IsEnabled = isEnabled;
         CaptureScreenshotButton.IsEnabled = isEnabled;
+        AttachPoolImageButton.IsEnabled = isEnabled;
+        ImagePoolListBox.IsEnabled = isEnabled;
         InsertImageReferenceButton.IsEnabled = isEnabled;
         RemoveImageButton.IsEnabled = isEnabled;
         AddHighlightButton.IsEnabled = isEnabled;
@@ -983,6 +1022,7 @@ public partial class MainWindow : Window
         var hasSelectedStep = StepsListBox.SelectedItem is EditableStep;
         var hasSelectedAsset = selectedAssetId.HasValue && GetSelectedEditableAsset() is not null;
         var hasSelectedAnnotation = selectedAnnotationId.HasValue && GetSelectedAnnotation() is not null;
+        var hasSelectedPoolAsset = selectedPoolAssetId.HasValue && currentAssets.Any(asset => asset.Id == selectedPoolAssetId.Value);
 
         SaveGuideButton.IsEnabled = hasProject;
         PreviewGuideButton.IsEnabled = hasProject;
@@ -992,6 +1032,8 @@ public partial class MainWindow : Window
         ImportImageButton.IsEnabled = hasProject && hasSelectedStep;
         PasteImageButton.IsEnabled = hasProject && hasSelectedStep;
         CaptureScreenshotButton.IsEnabled = hasProject && hasSelectedStep;
+        AttachPoolImageButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedPoolAsset;
+        ImagePoolListBox.IsEnabled = hasProject;
         InsertImageReferenceButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset;
         RemoveImageButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset;
         AddHighlightButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset;
@@ -1044,11 +1086,28 @@ public partial class MainWindow : Window
 
     private void AttachAssetToStep(EditableStep step, GuideAsset asset)
     {
-        currentAssets.Add(asset);
+        if (!currentAssets.Any(candidate => candidate.Id == asset.Id))
+        {
+            currentAssets.Add(asset);
+        }
+
+        if (step.AssetIds.Contains(asset.Id))
+        {
+            selectedAssetId = asset.Id;
+            selectedAnnotationId = null;
+            RefreshImagePoolAssets(asset.Id);
+            RefreshSelectedStepAssets(asset.Id);
+            RefreshSelectedAssetAnnotations();
+            UpdateUiState();
+            return;
+        }
+
         step.AssetIds.Add(asset.Id);
         step.ImageRefs.Add(StepImageRef.Create(asset.Id));
         selectedAssetId = asset.Id;
+        selectedPoolAssetId = asset.Id;
         selectedAnnotationId = null;
+        RefreshImagePoolAssets(asset.Id);
         RefreshSelectedStepAssets();
         RefreshSelectedAssetAnnotations();
         MarkDirty();
@@ -1150,6 +1209,32 @@ public partial class MainWindow : Window
             GuideAnnotationKind.Blur => new AnnotationBounds { X = 0.18 + offset, Y = 0.18 + offset, Width = 0.28, Height = 0.18 },
             _ => new AnnotationBounds { X = 0.12 + offset, Y = 0.12 + offset, Width = 0.32, Height = 0.22 }
         };
+    }
+
+    private void RefreshImagePoolAssets(Guid? preferredAssetId = null)
+    {
+        var targetAssetId = preferredAssetId ?? selectedPoolAssetId;
+        imagePoolAssets.Clear();
+
+        if (currentProject is null)
+        {
+            selectedPoolAssetId = null;
+            ImagePoolListBox.SelectedItem = null;
+            return;
+        }
+
+        foreach (var asset in currentAssets.OrderByDescending(asset => asset.CapturedAt))
+        {
+            imagePoolAssets.Add(EditableAsset.FromGuideAsset(
+                currentProject.ProjectDirectory,
+                asset,
+                []));
+        }
+
+        var selectedAsset = imagePoolAssets.FirstOrDefault(asset => asset.Id == targetAssetId)
+            ?? imagePoolAssets.FirstOrDefault();
+        selectedPoolAssetId = selectedAsset?.Id;
+        ImagePoolListBox.SelectedItem = selectedAsset;
     }
 
     private void RefreshSelectedStepAssets(Guid? preferredAssetId = null)

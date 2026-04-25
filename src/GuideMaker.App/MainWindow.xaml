@@ -337,98 +337,156 @@
                         </WrapPanel>
                     </DockPanel>
 
-                    <ListBox x:Name="StepAssetsListBox"
-                             Grid.Row="5"
-                             MinHeight="180"
-                             ScrollViewer.VerticalScrollBarVisibility="Auto"
-                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                             PreviewMouseLeftButtonDown="StepAssetsListBox_PreviewMouseLeftButtonDown"
-                             SelectionChanged="StepAssetsListBox_SelectionChanged">
-                        <ListBox.ItemContainerStyle>
-                            <Style TargetType="ListBoxItem">
-                                <Setter Property="Height" Value="82" />
-                                <Setter Property="Padding" Value="0" />
-                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                                <Setter Property="VerticalContentAlignment" Value="Stretch" />
-                            </Style>
-                        </ListBox.ItemContainerStyle>
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <Grid Margin="4,6"
-                                      Height="70"
-                                      Background="Transparent">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="112" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <Border Background="{DynamicResource CanvasBrush}"
-                                            BorderBrush="{DynamicResource BorderBrushSoft}"
-                                            BorderThickness="1"
-                                            CornerRadius="6"
-                                            Width="96"
-                                            Height="64">
-                                        <Grid ClipToBounds="True">
-                                            <Canvas Width="96"
+                    <TabControl Grid.Row="5"
+                                MinHeight="180">
+                        <TabItem Header="Step">
+                            <ListBox x:Name="StepAssetsListBox"
+                                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                     PreviewMouseLeftButtonDown="StepAssetsListBox_PreviewMouseLeftButtonDown"
+                                     SelectionChanged="StepAssetsListBox_SelectionChanged">
+                                <ListBox.ItemContainerStyle>
+                                    <Style TargetType="ListBoxItem">
+                                        <Setter Property="Height" Value="82" />
+                                        <Setter Property="Padding" Value="0" />
+                                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                        <Setter Property="VerticalContentAlignment" Value="Stretch" />
+                                    </Style>
+                                </ListBox.ItemContainerStyle>
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="4,6"
+                                              Height="70"
+                                              Background="Transparent">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="112" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Border Background="{DynamicResource CanvasBrush}"
+                                                    BorderBrush="{DynamicResource BorderBrushSoft}"
+                                                    BorderThickness="1"
+                                                    CornerRadius="6"
+                                                    Width="96"
                                                     Height="64">
-                                                <Image Source="{Binding FullPath}"
-                                                       Canvas.Left="{Binding ThumbImageX}"
-                                                       Canvas.Top="{Binding ThumbImageY}"
-                                                       Width="{Binding ThumbImageWidth}"
-                                                       Height="{Binding ThumbImageHeight}"
-                                                       Stretch="Fill" />
-                                            </Canvas>
-                                            <ItemsControl ItemsSource="{Binding Annotations}">
-                                                <ItemsControl.ItemsPanel>
-                                                    <ItemsPanelTemplate>
-                                                        <Canvas Width="96"
-                                                                Height="64" />
-                                                    </ItemsPanelTemplate>
-                                                </ItemsControl.ItemsPanel>
-                                                <ItemsControl.ItemContainerStyle>
-                                                    <Style TargetType="ContentPresenter">
-                                                        <Setter Property="Canvas.Left" Value="{Binding ThumbX}" />
-                                                        <Setter Property="Canvas.Top" Value="{Binding ThumbY}" />
-                                                    </Style>
-                                                </ItemsControl.ItemContainerStyle>
-                                                <ItemsControl.ItemTemplate>
-                                                    <DataTemplate>
-                                                        <Border Width="{Binding ThumbWidth}"
-                                                                Height="{Binding ThumbHeight}"
-                                                                BorderBrush="{Binding BorderBrush}"
-                                                                BorderThickness="{Binding BorderThickness}"
-                                                                Background="{Binding Background}">
-                                                        <TextBlock Text="{Binding Text}"
-                                                                   Foreground="{Binding TextBrush}"
-                                                                   FontSize="{Binding ThumbFontSize}"
-                                                                   FontWeight="{Binding TextFontWeight}"
-                                                                   FontStyle="{Binding TextFontStyle}"
-                                                                   Margin="3,1"
-                                                                   TextTrimming="CharacterEllipsis" />
-                                                        </Border>
-                                                    </DataTemplate>
-                                                </ItemsControl.ItemTemplate>
-                                            </ItemsControl>
+                                                <Grid ClipToBounds="True">
+                                                    <Canvas Width="96"
+                                                            Height="64">
+                                                        <Image Source="{Binding FullPath}"
+                                                               Canvas.Left="{Binding ThumbImageX}"
+                                                               Canvas.Top="{Binding ThumbImageY}"
+                                                               Width="{Binding ThumbImageWidth}"
+                                                               Height="{Binding ThumbImageHeight}"
+                                                               Stretch="Fill" />
+                                                    </Canvas>
+                                                    <ItemsControl ItemsSource="{Binding Annotations}">
+                                                        <ItemsControl.ItemsPanel>
+                                                            <ItemsPanelTemplate>
+                                                                <Canvas Width="96"
+                                                                        Height="64" />
+                                                            </ItemsPanelTemplate>
+                                                        </ItemsControl.ItemsPanel>
+                                                        <ItemsControl.ItemContainerStyle>
+                                                            <Style TargetType="ContentPresenter">
+                                                                <Setter Property="Canvas.Left" Value="{Binding ThumbX}" />
+                                                                <Setter Property="Canvas.Top" Value="{Binding ThumbY}" />
+                                                            </Style>
+                                                        </ItemsControl.ItemContainerStyle>
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <Border Width="{Binding ThumbWidth}"
+                                                                        Height="{Binding ThumbHeight}"
+                                                                        BorderBrush="{Binding BorderBrush}"
+                                                                        BorderThickness="{Binding BorderThickness}"
+                                                                        Background="{Binding Background}">
+                                                                <TextBlock Text="{Binding Text}"
+                                                                           Foreground="{Binding TextBrush}"
+                                                                           FontSize="{Binding ThumbFontSize}"
+                                                                           FontWeight="{Binding TextFontWeight}"
+                                                                           FontStyle="{Binding TextFontStyle}"
+                                                                           Margin="3,1"
+                                                                           TextTrimming="CharacterEllipsis" />
+                                                                </Border>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </Grid>
+                                            </Border>
+                                            <StackPanel Grid.Column="1"
+                                                        Margin="10,0,0,0"
+                                                        VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Caption}"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource TextBrush}" />
+                                                <TextBlock Text="{Binding RelativePath}"
+                                                           Margin="0,3,0,0"
+                                                           Foreground="{DynamicResource MutedTextBrush}"
+                                                           TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Text="{Binding AnnotationSummary}"
+                                                           Margin="0,3,0,0"
+                                                           Foreground="{DynamicResource MutedTextBrush}"
+                                                           TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
                                         </Grid>
-                                    </Border>
-                                    <StackPanel Grid.Column="1"
-                                                Margin="10,0,0,0"
-                                                VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding Caption}"
-                                                   FontWeight="SemiBold"
-                                                   Foreground="{DynamicResource TextBrush}" />
-                                        <TextBlock Text="{Binding RelativePath}"
-                                                   Margin="0,3,0,0"
-                                                   Foreground="{DynamicResource MutedTextBrush}"
-                                                   TextTrimming="CharacterEllipsis" />
-                                        <TextBlock Text="{Binding AnnotationSummary}"
-                                                   Margin="0,3,0,0"
-                                                   Foreground="{DynamicResource MutedTextBrush}"
-                                                   TextTrimming="CharacterEllipsis" />
-                                    </StackPanel>
-                                </Grid>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </TabItem>
+                        <TabItem Header="Pool">
+                            <DockPanel Margin="0,6,0,0">
+                                <Button x:Name="AttachPoolImageButton"
+                                        DockPanel.Dock="Top"
+                                        Content="Attach to step"
+                                        MinWidth="120"
+                                        HorizontalAlignment="Left"
+                                        Margin="0,0,0,8"
+                                        Click="AttachPoolImageButton_Click" />
+                                <ListBox x:Name="ImagePoolListBox"
+                                         ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                         SelectionChanged="ImagePoolListBox_SelectionChanged">
+                                    <ListBox.ItemContainerStyle>
+                                        <Style TargetType="ListBoxItem">
+                                            <Setter Property="Height" Value="76" />
+                                            <Setter Property="Padding" Value="0" />
+                                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                        </Style>
+                                    </ListBox.ItemContainerStyle>
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="4,6"
+                                                  Height="64"
+                                                  Background="Transparent">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="104" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <Border Background="{DynamicResource CanvasBrush}"
+                                                        BorderBrush="{DynamicResource BorderBrushSoft}"
+                                                        BorderThickness="1"
+                                                        CornerRadius="6"
+                                                        Width="88"
+                                                        Height="58">
+                                                    <Image Source="{Binding FullPath}"
+                                                           Stretch="Uniform" />
+                                                </Border>
+                                                <StackPanel Grid.Column="1"
+                                                            Margin="10,0,0,0"
+                                                            VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Caption}"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="{DynamicResource TextBrush}" />
+                                                    <TextBlock Text="{Binding RelativePath}"
+                                                               Margin="0,3,0,0"
+                                                               Foreground="{DynamicResource MutedTextBrush}"
+                                                               TextTrimming="CharacterEllipsis" />
+                                                </StackPanel>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </DockPanel>
+                        </TabItem>
+                    </TabControl>
 
                     <Border Grid.Row="6"
                             Margin="0,14,0,0"

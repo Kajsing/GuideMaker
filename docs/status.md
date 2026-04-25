@@ -70,6 +70,9 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | 2026-04-25 | Step image ref body tokens map to rendered images | Smoke testing showed original images could export without annotations and then repeat later in the step | `[[image:...]]` tokens in steps with image refs now target the rendered image-ref asset and no longer force original legacy image export |
 | 2026-04-25 | Step image list and workspace made roomier | Image handling became cramped once steps had multiple screenshots | Step images now get more vertical space, the workspace pane starts wider, and the Image workspace uses a wider fitting surface for annotations |
 | 2026-04-25 | HTML export preserves blank body lines | Smoke testing showed empty lines in step text disappeared in export preview | Blank lines now render as spacing in HTML export and preview |
+| 2026-04-25 | Visible image pool added | Follow-along capture and reuse need originals to outlive their step attachments | The app now shows a Pool tab, keeps removed step images in the project asset pool, and can attach pool images back to the selected step |
+| 2026-04-25 | Preview uses rendered export assets | Preview and export should not disagree about image refs, crop, or burned-in annotations | `preview.html` now renders through the export asset renderer before HTML generation |
+| 2026-04-26 | Step image refs render only when referenced | Attaching a pool image to a step should make it available, not automatically print it in the guide | Steps with image refs now export only images explicitly placed with `[[image:...]]`; legacy `AssetIds` fallback remains readable |
 
 ## Open Blockers
 
@@ -155,6 +158,10 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Roomier step image list and workspace build; Release tests passed; 29 tests passed |
 | 2026-04-25 | `git diff --check` | Pass | HTML blank-line export fix whitespace check clean |
 | 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | HTML blank-line export fix build; Release tests passed; 30 tests passed |
+| 2026-04-25 | `git diff --check` | Pass | Visible image pool and rendered preview whitespace check clean |
+| 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Visible image pool and rendered preview build; Release tests passed; 30 tests passed |
+| 2026-04-26 | `git diff --check` | Pass | Explicit image reference export whitespace check clean |
+| 2026-04-26 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Explicit image reference export build; Release tests passed; 31 tests passed |
 
 ## Known Risks
 
@@ -185,7 +192,7 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 
 ## Next Recommended Step
 
-Smoke test the app save/load bridge, then continue Milestone 8 image pool migration by refactoring the visible UI to separate the reusable image pool from selected-step image references.
+Smoke test the visible image pool, then continue Milestone 8 image pipeline with crop editing on step image refs.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1
