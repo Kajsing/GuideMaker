@@ -2,9 +2,9 @@
 
 ## Current State
 
-Current milestone: Milestone 4 - Basic UI Shell.
+Current milestone: Milestone 5 - Images And Screenshot Capture.
 
-Status: Milestone 3 is complete. Markdown and HTML export can write deterministic files and sample-guide export is covered by smoke tests.
+Status: Milestone 4 is complete. The WPF shell can create, open, edit, save, reopen, and export basic guide projects.
 
 ## Milestone 0 - Research And Decisions
 
@@ -74,7 +74,7 @@ Acceptance:
 
 ## Milestone 4 - Basic UI Shell
 
-Status: ready.
+Status: complete.
 
 Scope:
 
@@ -88,6 +88,8 @@ Acceptance:
 - user can create a guide, add steps, save, close, reopen, and continue editing.
 
 ## Milestone 5 - Images And Screenshot Capture
+
+Status: ready.
 
 Scope:
 

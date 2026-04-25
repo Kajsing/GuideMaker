@@ -4,9 +4,9 @@
 
 Phase: Implementation
 
-Current milestone: Milestone 4 - Basic UI shell
+Current milestone: Milestone 5 - Images and screenshot capture
 
-Status: Milestone 3 export hardening is complete. Next step is wiring the basic WPF UI shell to create/open/save guides.
+Status: Milestone 4 basic UI shell is complete. Next step is image import, clipboard paste, and follow-along screenshot capture.
 
 ## Decision Log
 
@@ -25,6 +25,7 @@ Status: Milestone 3 export hardening is complete. Next step is wiring the basic 
 | 2026-04-25 | .NET 8 SDK installed and validation scripts hardened | Enables real build/test validation | `validate.ps1` now passes and opts out of .NET CLI telemetry |
 | 2026-04-25 | Storage layer hardened | UI can rely on clearer project load/save behavior | Missing files, invalid JSON, schema errors, unsafe asset paths, and missing assets are covered |
 | 2026-04-25 | Markdown and HTML export hardened | Guides can be exported to deterministic files | `exports/guide.md` and `exports/guide.html` are covered by smoke tests |
+| 2026-04-25 | Basic WPF UI shell wired | Gives the app a usable create/open/edit/save loop | Users can manage basic guide projects before image capture is added |
 
 ## Open Blockers
 
@@ -40,8 +41,8 @@ Status: Milestone 3 export hardening is complete. Next step is wiring the basic 
 | 1 Repo skeleton and core model | Complete | `validate.ps1` passes |
 | 2 Storage layer hardening | Complete | Validation passes with 10 tests |
 | 3 Markdown and HTML export | Complete | Validation passes with 14 tests |
-| 4 Basic UI shell | Ready | WPF shell exists; workflow not wired |
-| 5 Images and screenshot capture | Not started | MVP scope |
+| 4 Basic UI shell | Complete | Create/open/edit/save/reopen loop wired |
+| 5 Images and screenshot capture | Ready | MVP scope |
 | 6 Basic annotation | Not started | MVP scope |
 | 7 PDF export and preview | Not started | PDF package decision needed |
 | 8 MVP hardening | Not started | Final polish |
@@ -62,6 +63,7 @@ Status: Milestone 3 export hardening is complete. Next step is wiring the basic 
 | 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Restore/build/test passed; 2 tests passed |
 | 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Restore/build/test passed; 10 tests passed |
 | 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Restore/build/test passed; 14 tests passed |
+| 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Basic UI shell builds; 14 tests passed |
 
 ## Known Risks
 
@@ -74,7 +76,7 @@ Status: Milestone 3 export hardening is complete. Next step is wiring the basic 
 
 ## Next Recommended Step
 
-Start Milestone 4: wire the WPF shell to create, open, edit, save, and reopen basic guide projects.
+Start Milestone 5: add image import, clipboard paste, follow-along screenshot capture, and attach screenshots to guide steps.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1
