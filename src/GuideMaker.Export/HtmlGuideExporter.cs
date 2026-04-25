@@ -1,12 +1,15 @@
 using System.Net;
 using System.Text;
+using System.Text.RegularExpressions;
 using GuideMaker.Core;
 
 namespace GuideMaker.Export;
 
 public sealed class HtmlGuideExporter
 {
-    public string Export(GuideDocument document)
+    private static readonly Regex ImageReferenceRegex = new(@"\[\[image:(?<path>[^\]]+)\]\]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    public string Export(GuideDocument document, string assetPathPrefix = "")
     {
         ArgumentNullException.ThrowIfNull(document);
 
@@ -32,28 +35,30 @@ public sealed class HtmlGuideExporter
             builder.Append("    <h2>").Append(step.Order).Append(". ")
                 .Append(WebUtility.HtmlEncode(step.Title)).AppendLine("</h2>");
 
+            HashSet<Guid> renderedAssetIds;
             if (!string.IsNullOrWhiteSpace(step.Body))
             {
-                builder.Append("    <p>").Append(WebUtility.HtmlEncode(step.Body)).AppendLine("</p>");
+                RenderBody(builder, document, step, assetPathPrefix, out renderedAssetIds);
+            }
+            else
+            {
+                renderedAssetIds = [];
             }
 
             foreach (var assetId in step.AssetIds)
             {
+                if (renderedAssetIds.Contains(assetId))
+                {
+                    continue;
+                }
+
                 var asset = document.Assets.FirstOrDefault(candidate => candidate.Id == assetId);
                 if (asset is null)
                 {
                     continue;
                 }
 
-                var imagePath = WebUtility.HtmlEncode(asset.RelativePath.Replace('\\', '/'));
-                var altText = WebUtility.HtmlEncode(asset.AltText ?? asset.Caption ?? step.Title);
-                builder.Append("    <img src=\"").Append(imagePath).Append("\" alt=\"")
-                    .Append(altText).AppendLine("\">");
-
-                if (!string.IsNullOrWhiteSpace(asset.Caption))
-                {
-                    builder.Append("    <p><em>").Append(WebUtility.HtmlEncode(asset.Caption)).AppendLine("</em></p>");
-                }
+                RenderAsset(builder, asset, step.Title, assetPathPrefix);
             }
 
             builder.AppendLine("  </section>");
@@ -63,5 +68,57 @@ public sealed class HtmlGuideExporter
         builder.AppendLine("</html>");
 
         return builder.ToString();
+    }
+
+    private static void RenderBody(
+        StringBuilder builder,
+        GuideDocument document,
+        GuideStep step,
+        string assetPathPrefix,
+        out HashSet<Guid> renderedAssetIds)
+    {
+        renderedAssetIds = [];
+        var lines = step.Body.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
+
+        foreach (var line in lines)
+        {
+            var match = ImageReferenceRegex.Match(line.Trim());
+            if (match.Success && match.Value == line.Trim())
+            {
+                var relativePath = NormalizeAssetPath(match.Groups["path"].Value);
+                var asset = document.Assets.FirstOrDefault(candidate =>
+                    string.Equals(NormalizeAssetPath(candidate.RelativePath), relativePath, StringComparison.OrdinalIgnoreCase));
+
+                if (asset is not null)
+                {
+                    RenderAsset(builder, asset, step.Title, assetPathPrefix);
+                    renderedAssetIds.Add(asset.Id);
+                    continue;
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(line))
+            {
+                builder.Append("    <p>").Append(WebUtility.HtmlEncode(line)).AppendLine("</p>");
+            }
+        }
+    }
+
+    private static void RenderAsset(StringBuilder builder, GuideAsset asset, string fallbackTitle, string assetPathPrefix)
+    {
+        var imagePath = WebUtility.HtmlEncode(assetPathPrefix + asset.RelativePath.Replace('\\', '/'));
+        var altText = WebUtility.HtmlEncode(asset.AltText ?? asset.Caption ?? fallbackTitle);
+        builder.Append("    <img src=\"").Append(imagePath).Append("\" alt=\"")
+            .Append(altText).AppendLine("\">");
+
+        if (!string.IsNullOrWhiteSpace(asset.Caption))
+        {
+            builder.Append("    <p><em>").Append(WebUtility.HtmlEncode(asset.Caption)).AppendLine("</em></p>");
+        }
+    }
+
+    private static string NormalizeAssetPath(string value)
+    {
+        return value.Trim().Replace('\\', '/');
     }
 }

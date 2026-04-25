@@ -2,9 +2,9 @@
 
 ## Current State
 
-Current milestone: Milestone 5 - Images And Screenshot Capture.
+Current milestone: Milestone 6 - Basic Annotation.
 
-Status: Milestone 4 is complete. The WPF shell can create, open, edit, save, reopen, and export basic guide projects.
+Status: Milestone 5 is complete. The UI can import image files, paste clipboard images, capture screenshots, attach them to selected steps, and save/reload image references.
 
 ## Milestone 0 - Research And Decisions
 
@@ -89,7 +89,7 @@ Acceptance:
 
 ## Milestone 5 - Images And Screenshot Capture
 
-Status: ready.
+Status: complete.
 
 Scope:
 
@@ -105,12 +105,15 @@ Acceptance:
 
 ## Milestone 6 - Basic Annotation
 
+Status: ready.
+
 Scope:
 
 - rectangle/highlight
 - arrow
 - label/caption
 - optional blur/redaction if feasible
+- decide and implement display-size metadata for step image references if it fits cleanly with annotation/export
 
 Acceptance:
 

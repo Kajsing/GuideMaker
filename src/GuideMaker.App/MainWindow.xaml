@@ -17,14 +17,18 @@
         <SolidColorBrush x:Key="TextBrush" Color="#202124" />
         <SolidColorBrush x:Key="MutedTextBrush" Color="#5F6368" />
         <SolidColorBrush x:Key="BorderBrushSoft" Color="#DADCE0" />
+        <SolidColorBrush x:Key="ButtonBackgroundBrush" Color="#FFFFFF" />
+        <SolidColorBrush x:Key="ButtonHoverBrush" Color="#F1F3F4" />
+        <SolidColorBrush x:Key="InputBackgroundBrush" Color="#FFFFFF" />
 
         <Style TargetType="Button">
             <Setter Property="MinHeight" Value="36" />
+            <Setter Property="MinWidth" Value="88" />
             <Setter Property="Padding" Value="14,6" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="BorderBrush" Value="#DADCE0" />
-            <Setter Property="Background" Value="#FFFFFF" />
-            <Setter Property="Foreground" Value="#202124" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrushSoft}" />
+            <Setter Property="Background" Value="{DynamicResource ButtonBackgroundBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Template">
                 <Setter.Value>
@@ -41,7 +45,7 @@
             </Setter>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#F1F3F4" />
+                    <Setter Property="Background" Value="{DynamicResource ButtonHoverBrush}" />
                 </Trigger>
                 <Trigger Property="IsEnabled" Value="False">
                     <Setter Property="Opacity" Value="0.45" />
@@ -50,14 +54,48 @@
             </Style.Triggers>
         </Style>
 
+        <Style TargetType="ToggleButton">
+            <Setter Property="MinHeight" Value="36" />
+            <Setter Property="MinWidth" Value="88" />
+            <Setter Property="Padding" Value="14,6" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrushSoft}" />
+            <Setter Property="Background" Value="{DynamicResource ButtonBackgroundBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource ButtonHoverBrush}" />
+                </Trigger>
+                <Trigger Property="IsChecked" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource PrimaryBrush}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}" />
+                    <Setter Property="Foreground" Value="#FFFFFF" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
         <Style x:Key="PrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Background" Value="{StaticResource PrimaryBrush}" />
-            <Setter Property="BorderBrush" Value="{StaticResource PrimaryBrush}" />
+            <Setter Property="Background" Value="{DynamicResource PrimaryBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}" />
             <Setter Property="Foreground" Value="#FFFFFF" />
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="{StaticResource PrimaryDarkBrush}" />
-                    <Setter Property="BorderBrush" Value="{StaticResource PrimaryDarkBrush}" />
+                    <Setter Property="Background" Value="{DynamicResource PrimaryDarkBrush}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource PrimaryDarkBrush}" />
                 </Trigger>
             </Style.Triggers>
         </Style>
@@ -65,15 +103,22 @@
         <Style TargetType="TextBox">
             <Setter Property="MinHeight" Value="36" />
             <Setter Property="Padding" Value="10,7" />
-            <Setter Property="BorderBrush" Value="#DADCE0" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrushSoft}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Background" Value="#FFFFFF" />
-            <Setter Property="Foreground" Value="#202124" />
+            <Setter Property="Background" Value="{DynamicResource InputBackgroundBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+            <Setter Property="CaretBrush" Value="{DynamicResource TextBrush}" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+
+        <Style TargetType="ListBox">
+            <Setter Property="Background" Value="{DynamicResource InputBackgroundBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrushSoft}" />
         </Style>
     </Window.Resources>
 
-    <Grid Background="{StaticResource CanvasBrush}">
+    <Grid Background="{DynamicResource CanvasBrush}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -81,8 +126,8 @@
         </Grid.RowDefinitions>
 
         <Border Grid.Row="0"
-                Background="{StaticResource SurfaceBrush}"
-                BorderBrush="{StaticResource BorderBrushSoft}"
+                Background="{DynamicResource SurfaceBrush}"
+                BorderBrush="{DynamicResource BorderBrushSoft}"
                 BorderThickness="0,0,0,1">
             <Grid Margin="20,14">
                 <Grid.ColumnDefinitions>
@@ -94,31 +139,39 @@
                     <TextBlock Text="GuideMaker"
                                FontSize="22"
                                FontWeight="SemiBold"
-                               Foreground="{StaticResource TextBrush}" />
+                               Foreground="{DynamicResource TextBrush}" />
                     <TextBlock x:Name="ProjectPathTextBlock"
                                Text="No project open"
                                Margin="0,2,0,0"
-                               Foreground="{StaticResource MutedTextBrush}"
+                               Foreground="{DynamicResource MutedTextBrush}"
                                TextTrimming="CharacterEllipsis" />
                 </StackPanel>
 
                 <StackPanel Grid.Column="1"
                             Orientation="Horizontal">
+                    <ToggleButton x:Name="ThemeToggleButton"
+                                  Content="Dark"
+                                  Margin="0,0,8,0"
+                                  Click="ThemeToggleButton_Click" />
                     <Button x:Name="NewGuideButton"
                             Content="New"
+                            MinWidth="92"
                             Margin="0,0,8,0"
                             Click="NewGuideButton_Click" />
                     <Button x:Name="OpenGuideButton"
                             Content="Open"
+                            MinWidth="92"
                             Margin="0,0,8,0"
                             Click="OpenGuideButton_Click" />
                     <Button x:Name="SaveGuideButton"
                             Content="Save"
+                            MinWidth="92"
                             Margin="0,0,8,0"
                             Style="{StaticResource PrimaryButtonStyle}"
                             Click="SaveGuideButton_Click" />
                     <Button x:Name="ExportGuideButton"
                             Content="Export"
+                            MinWidth="92"
                             Click="ExportGuideButton_Click" />
                 </StackPanel>
             </Grid>
@@ -132,8 +185,8 @@
             </Grid.ColumnDefinitions>
 
             <Border Grid.Column="0"
-                    Background="{StaticResource SurfaceBrush}"
-                    BorderBrush="{StaticResource BorderBrushSoft}"
+                    Background="{DynamicResource SurfaceBrush}"
+                    BorderBrush="{DynamicResource BorderBrushSoft}"
                     BorderThickness="1"
                     CornerRadius="8">
                 <DockPanel Margin="14">
@@ -148,34 +201,36 @@
                                    FontSize="16"
                                    FontWeight="SemiBold"
                                    VerticalAlignment="Center"
-                                   Foreground="{StaticResource TextBrush}" />
+                                   Foreground="{DynamicResource TextBrush}" />
                         <Button Grid.Column="1"
                                 x:Name="AddStepButton"
                                 Content="Add"
+                                MinWidth="72"
                                 Margin="8,0,0,0"
                                 Click="AddStepButton_Click" />
                         <Button Grid.Column="2"
                                 x:Name="DeleteStepButton"
                                 Content="Delete"
+                                MinWidth="72"
                                 Margin="8,0,0,0"
                                 Click="DeleteStepButton_Click" />
                     </Grid>
 
                     <ListBox x:Name="StepsListBox"
-                             BorderBrush="{StaticResource BorderBrushSoft}"
+                             BorderBrush="{DynamicResource BorderBrushSoft}"
                              SelectionChanged="StepsListBox_SelectionChanged">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
                                 <StackPanel Margin="4,6">
                                     <TextBlock FontWeight="SemiBold"
-                                               Foreground="{StaticResource TextBrush}">
+                                               Foreground="{DynamicResource TextBrush}">
                                         <Run Text="{Binding Order}" />
                                         <Run Text=". " />
                                         <Run Text="{Binding Title}" />
                                     </TextBlock>
                                     <TextBlock Text="{Binding Body}"
                                                Margin="0,3,0,0"
-                                               Foreground="{StaticResource MutedTextBrush}"
+                                               Foreground="{DynamicResource MutedTextBrush}"
                                                TextTrimming="CharacterEllipsis" />
                                 </StackPanel>
                             </DataTemplate>
@@ -185,8 +240,8 @@
             </Border>
 
             <Border Grid.Column="1"
-                    Background="{StaticResource SurfaceBrush}"
-                    BorderBrush="{StaticResource BorderBrushSoft}"
+                    Background="{DynamicResource SurfaceBrush}"
+                    BorderBrush="{DynamicResource BorderBrushSoft}"
                     BorderThickness="1"
                     CornerRadius="8"
                     Margin="20,0,0,0"
@@ -196,13 +251,15 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="2*" />
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
                     <TextBlock Text="Guide"
                                FontSize="13"
                                FontWeight="SemiBold"
-                               Foreground="{StaticResource PrimaryBrush}" />
+                               Foreground="{DynamicResource PrimaryBrush}" />
                     <TextBox x:Name="GuideTitleTextBox"
                              Grid.Row="1"
                              Margin="0,8,0,18"
@@ -212,7 +269,7 @@
                                Text="Selected step"
                                FontSize="13"
                                FontWeight="SemiBold"
-                               Foreground="{StaticResource PrimaryBrush}" />
+                               Foreground="{DynamicResource PrimaryBrush}" />
 
                     <Grid Grid.Row="3"
                           Margin="0,8,0,0">
@@ -233,22 +290,104 @@
                                  MinHeight="260"
                                  TextChanged="StepBodyTextBox_TextChanged" />
                     </Grid>
+
+                    <Grid Grid.Row="4"
+                          Margin="0,18,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Images"
+                                   FontSize="13"
+                                   FontWeight="SemiBold"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource PrimaryBrush}" />
+                        <Button Grid.Column="1"
+                                x:Name="ImportImageButton"
+                                Content="Import"
+                                MinWidth="78"
+                                Margin="8,0,0,0"
+                                Click="ImportImageButton_Click" />
+                        <Button Grid.Column="2"
+                                x:Name="PasteImageButton"
+                                Content="Paste"
+                                MinWidth="78"
+                                Margin="8,0,0,0"
+                                Click="PasteImageButton_Click" />
+                        <Button Grid.Column="3"
+                                x:Name="CaptureScreenshotButton"
+                                Content="Capture"
+                                MinWidth="88"
+                                Margin="8,0,0,0"
+                                Click="CaptureScreenshotButton_Click" />
+                        <Button Grid.Column="4"
+                                x:Name="InsertImageReferenceButton"
+                                Content="Insert ref"
+                                MinWidth="96"
+                                Margin="8,0,0,0"
+                                Click="InsertImageReferenceButton_Click" />
+                        <Button Grid.Column="5"
+                                x:Name="RemoveImageButton"
+                                Content="Remove"
+                                MinWidth="88"
+                                Margin="8,0,0,0"
+                                Click="RemoveImageButton_Click" />
+                    </Grid>
+
+                    <ListBox x:Name="StepAssetsListBox"
+                             Grid.Row="5"
+                             SelectionChanged="StepAssetsListBox_SelectionChanged">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="4,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="112" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Background="{DynamicResource CanvasBrush}"
+                                            BorderBrush="{DynamicResource BorderBrushSoft}"
+                                            BorderThickness="1"
+                                            CornerRadius="6"
+                                            Width="96"
+                                            Height="64">
+                                        <Image Source="{Binding FullPath}"
+                                               Stretch="Uniform" />
+                                    </Border>
+                                    <StackPanel Grid.Column="1"
+                                                Margin="10,0,0,0"
+                                                VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Caption}"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource TextBrush}" />
+                                        <TextBlock Text="{Binding RelativePath}"
+                                                   Margin="0,3,0,0"
+                                                   Foreground="{DynamicResource MutedTextBrush}"
+                                                   TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
                 </Grid>
             </Border>
         </Grid>
 
         <Border Grid.Row="2"
-                Background="{StaticResource SurfaceBrush}"
-                BorderBrush="{StaticResource BorderBrushSoft}"
+                Background="{DynamicResource SurfaceBrush}"
+                BorderBrush="{DynamicResource BorderBrushSoft}"
                 BorderThickness="0,1,0,0"
                 Padding="20,9">
             <DockPanel LastChildFill="True">
                 <TextBlock x:Name="DirtyIndicatorTextBlock"
                            DockPanel.Dock="Right"
-                           Foreground="{StaticResource MutedTextBrush}" />
+                           Foreground="{DynamicResource MutedTextBrush}" />
                 <TextBlock x:Name="StatusTextBlock"
                            Text="Ready. Local-only MVP. No telemetry. No cloud."
-                           Foreground="{StaticResource MutedTextBrush}" />
+                           Foreground="{DynamicResource MutedTextBrush}" />
             </DockPanel>
         </Border>
     </Grid>

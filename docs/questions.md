@@ -67,6 +67,12 @@ Status: DECIDED
 
 C#/.NET with WPF. Rationale: local Windows desktop app, no paid third-party runtime, mature screenshot/file/PDF workflow options, and good fit for a Region Midt Windows environment. Prefer free/open-source NuGet packages only where needed.
 
+### Q-013 - Should dark mode be included in MVP?
+
+Status: DECIDED
+
+Yes. Include a simple local dark mode toggle in the app shell. Avoid adding a UI framework dependency just for theme switching. Later, move this toggle into a Settings surface when the app has one.
+
 ### Q-015 - Can guide content contain sensitive data?
 
 Status: DECIDED
@@ -110,7 +116,6 @@ See `docs/spec.md` non-goals.
 - Q-003: personal/internal tool vs. formal product framing.
 - Q-005: whether future versions need multiple roles.
 - Q-010: exact Git-friendly conventions for guide project folders.
-- Q-013: dark mode.
 - Q-014: drag-and-drop reordering.
 - Q-018: admin-free install.
 - Q-019: packaging approach.

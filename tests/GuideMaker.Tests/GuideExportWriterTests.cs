@@ -71,9 +71,9 @@ public sealed class GuideExportWriterTests
             var html = await File.ReadAllTextAsync(result.HtmlPath);
 
             Assert.Contains("# Starter guide", markdown);
-            Assert.Contains("![Screenshot of the application start screen.](assets/open-application.png)", markdown);
+            Assert.Contains("![Screenshot of the application start screen.](../assets/open-application.png)", markdown);
             Assert.Contains("<h1>Starter guide</h1>", html);
-            Assert.Contains("<img src=\"assets/open-application.png\" alt=\"Screenshot of the application start screen.\">", html);
+            Assert.Contains("<img src=\"../assets/open-application.png\" alt=\"Screenshot of the application start screen.\">", html);
         }
         finally
         {

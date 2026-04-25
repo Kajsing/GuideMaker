@@ -4,9 +4,9 @@
 
 Phase: Implementation
 
-Current milestone: Milestone 5 - Images and screenshot capture
+Current milestone: Milestone 6 - Basic annotation
 
-Status: Milestone 4 basic UI shell is complete. Next step is image import, clipboard paste, and follow-along screenshot capture.
+Status: Milestone 5 image and screenshot capture is complete. Next step is basic annotation.
 
 ## Decision Log
 
@@ -26,6 +26,11 @@ Status: Milestone 4 basic UI shell is complete. Next step is image import, clipb
 | 2026-04-25 | Storage layer hardened | UI can rely on clearer project load/save behavior | Missing files, invalid JSON, schema errors, unsafe asset paths, and missing assets are covered |
 | 2026-04-25 | Markdown and HTML export hardened | Guides can be exported to deterministic files | `exports/guide.md` and `exports/guide.html` are covered by smoke tests |
 | 2026-04-25 | Basic WPF UI shell wired | Gives the app a usable create/open/edit/save loop | Users can manage basic guide projects before image capture is added |
+| 2026-04-25 | Dark mode included in app shell | User requested it during UI smoke testing | Theme switching stays local and dependency-free |
+| 2026-04-25 | Image import, paste, and screenshot capture added | Starts the visual guide authoring workflow | Images are stored in `assets/` and attached to selected steps |
+| 2026-04-25 | Export image paths and body image references fixed | Exported files live in `exports/` and need correct relative links | HTML/Markdown use `../assets/...`; `[[image:...]]` can place images inside step text |
+| 2026-04-25 | Multi-image import added | Users may collect several screenshots before attaching them | Import dialog can attach multiple selected files to the current step |
+| 2026-04-25 | Image display sizing deferred to annotation/export work | Size needs per-step image reference metadata, not only asset metadata | Revisit during Milestone 6 or 7 before final export polish |
 
 ## Open Blockers
 
@@ -42,8 +47,8 @@ Status: Milestone 4 basic UI shell is complete. Next step is image import, clipb
 | 2 Storage layer hardening | Complete | Validation passes with 10 tests |
 | 3 Markdown and HTML export | Complete | Validation passes with 14 tests |
 | 4 Basic UI shell | Complete | Create/open/edit/save/reopen loop wired |
-| 5 Images and screenshot capture | Ready | MVP scope |
-| 6 Basic annotation | Not started | MVP scope |
+| 5 Images and screenshot capture | Complete | Import, paste, capture, attach, and preview wired |
+| 6 Basic annotation | Ready | MVP scope |
 | 7 PDF export and preview | Not started | PDF package decision needed |
 | 8 MVP hardening | Not started | Final polish |
 
@@ -64,6 +69,10 @@ Status: Milestone 4 basic UI shell is complete. Next step is image import, clipb
 | 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Restore/build/test passed; 10 tests passed |
 | 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Restore/build/test passed; 14 tests passed |
 | 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Basic UI shell builds; 14 tests passed |
+| 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Button sizing and dark mode build; 14 tests passed |
+| 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Image storage/UI capture build; 17 tests passed |
+| 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Export image path/reference fix; 19 tests passed |
+| 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Multi-image import build; 19 tests passed |
 
 ## Known Risks
 
@@ -73,10 +82,12 @@ Status: Milestone 4 basic UI shell is complete. Next step is image import, clipb
 | Screenshot capture complexity | Medium | Keep capture flow small and local-first |
 | Sensitive screenshots | High | Add export warning and basic redaction/blur if feasible |
 | Scope creep | High | Keep non-goals explicit in `docs/spec.md` and `AGENTS.md` |
+| Dark mode placement | Low | Move the topbar toggle into Settings when a Settings surface exists |
+| Image display sizing model | Medium | Introduce per-step image reference metadata before implementing size controls |
 
 ## Next Recommended Step
 
-Start Milestone 5: add image import, clipboard paste, follow-along screenshot capture, and attach screenshots to guide steps.
+Start Milestone 6: add basic annotation tools for rectangles/highlights, arrows, labels, and optional blur/redaction.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1

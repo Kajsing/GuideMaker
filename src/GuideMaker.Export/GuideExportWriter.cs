@@ -35,9 +35,9 @@ public sealed class GuideExportWriter
         var markdownPath = Path.Combine(exportsDirectory, MarkdownFileName);
         var htmlPath = Path.Combine(exportsDirectory, HtmlFileName);
 
-        await File.WriteAllTextAsync(markdownPath, markdownExporter.Export(document), cancellationToken)
+        await File.WriteAllTextAsync(markdownPath, markdownExporter.Export(document, "../"), cancellationToken)
             .ConfigureAwait(false);
-        await File.WriteAllTextAsync(htmlPath, htmlExporter.Export(document), cancellationToken)
+        await File.WriteAllTextAsync(htmlPath, htmlExporter.Export(document, "../"), cancellationToken)
             .ConfigureAwait(false);
 
         return new GuideExportResult

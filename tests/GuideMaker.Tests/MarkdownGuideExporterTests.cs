@@ -69,4 +69,52 @@ public sealed class MarkdownGuideExporterTests
 
         Assert.Contains("![Start \\[main\\]](assets/start%20screen%20%28main%29.png)", markdown);
     }
+
+    [Fact]
+    public void Export_RendersImageReferenceTokenInBody()
+    {
+        var assetId = Guid.NewGuid();
+        var document = GuideDocument.Create("Medication app guide", "Codex") with
+        {
+            Steps =
+            [
+                GuideStep.Create(1, "Open the app", "Before image.\n[[image:assets/open-app.png]]\nAfter image.") with
+                {
+                    AssetIds = [assetId]
+                }
+            ],
+            Assets =
+            [
+                new GuideAsset
+                {
+                    Id = assetId,
+                    RelativePath = "assets/open-app.png",
+                    Kind = GuideAssetKind.Screenshot,
+                    Caption = "Application start screen",
+                    CapturedAt = DateTimeOffset.UtcNow
+                }
+            ]
+        };
+
+        var markdown = new MarkdownGuideExporter().Export(document, "../");
+
+        Assert.Contains("Before image.", markdown);
+        Assert.Contains("![Application start screen](../assets/open-app.png)", markdown);
+        Assert.Contains("After image.", markdown);
+        Assert.Equal(1, CountOccurrences(markdown, "![Application start screen]"));
+    }
+
+    private static int CountOccurrences(string value, string search)
+    {
+        var count = 0;
+        var index = 0;
+
+        while ((index = value.IndexOf(search, index, StringComparison.Ordinal)) >= 0)
+        {
+            count++;
+            index += search.Length;
+        }
+
+        return count;
+    }
 }

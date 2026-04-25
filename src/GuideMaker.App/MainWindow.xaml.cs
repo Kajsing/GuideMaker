@@ -2,11 +2,15 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Windows;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using GuideMaker.Core;
 using GuideMaker.Export;
 using GuideMaker.Storage;
+using Drawing = System.Drawing;
 using Forms = System.Windows.Forms;
 using OpenFileDialog = Microsoft.Win32.OpenFileDialog;
+using WpfClipboard = System.Windows.Clipboard;
 using WpfMessageBox = System.Windows.MessageBox;
 
 namespace GuideMaker.App;
@@ -14,12 +18,15 @@ namespace GuideMaker.App;
 public partial class MainWindow : Window
 {
     private readonly GuideProjectStore projectStore = new();
+    private readonly GuideAssetFileStore assetFileStore = new();
     private readonly GuideExportWriter exportWriter = new();
     private readonly ObservableCollection<EditableStep> steps = [];
+    private readonly ObservableCollection<EditableAsset> selectedStepAssets = [];
 
     private GuideProject? currentProject;
     private GuideMetadata? currentMetadata;
     private List<GuideAsset> currentAssets = [];
+    private bool isDarkMode;
     private bool isDirty;
     private bool isUpdatingUi;
     private bool closeAlreadyConfirmed;
@@ -29,7 +36,17 @@ public partial class MainWindow : Window
         InitializeComponent();
 
         StepsListBox.ItemsSource = steps;
+        StepAssetsListBox.ItemsSource = selectedStepAssets;
+        ApplyTheme(isDarkMode);
         UpdateUiState();
+    }
+
+    private void ThemeToggleButton_Click(object sender, RoutedEventArgs e)
+    {
+        isDarkMode = ThemeToggleButton.IsChecked == true;
+        ApplyTheme(isDarkMode);
+        ThemeToggleButton.Content = isDarkMode ? "Light" : "Dark";
+        SetStatus(isDarkMode ? "Dark mode enabled." : "Light mode enabled.");
     }
 
     private async void NewGuideButton_Click(object sender, RoutedEventArgs e)
@@ -165,6 +182,140 @@ public partial class MainWindow : Window
         SetStatus("Step deleted.");
     }
 
+    private async void ImportImageButton_Click(object sender, RoutedEventArgs e)
+    {
+        var selectedStep = GetSelectedStep();
+        if (selectedStep is null || currentProject is null)
+        {
+            return;
+        }
+
+        var dialog = new OpenFileDialog
+        {
+            Title = "Import image",
+            Filter = "Image files (*.png;*.jpg;*.jpeg;*.bmp;*.gif)|*.png;*.jpg;*.jpeg;*.bmp;*.gif|All files (*.*)|*.*",
+            CheckFileExists = true,
+            Multiselect = true
+        };
+
+        if (dialog.ShowDialog(this) != true)
+        {
+            return;
+        }
+
+        await RunUiActionAsync(async () =>
+        {
+            foreach (var fileName in dialog.FileNames)
+            {
+                var asset = await assetFileStore.ImportImageAsync(currentProject, fileName).ConfigureAwait(true);
+                AttachAssetToStep(selectedStep, asset);
+            }
+
+            SetStatus(dialog.FileNames.Length == 1
+                ? "Image imported and attached to selected step."
+                : $"{dialog.FileNames.Length} images imported and attached to selected step.");
+        }).ConfigureAwait(true);
+    }
+
+    private async void PasteImageButton_Click(object sender, RoutedEventArgs e)
+    {
+        var selectedStep = GetSelectedStep();
+        if (selectedStep is null || currentProject is null)
+        {
+            return;
+        }
+
+        if (!WpfClipboard.ContainsImage())
+        {
+            WpfMessageBox.Show(this, "Clipboard does not contain an image.", "GuideMaker", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        await RunUiActionAsync(async () =>
+        {
+            var image = WpfClipboard.GetImage();
+            if (image is null)
+            {
+                return;
+            }
+
+            await using var stream = EncodePng(image);
+            var asset = await assetFileStore.SavePngAsync(currentProject, "clipboard image", stream).ConfigureAwait(true);
+            AttachAssetToStep(selectedStep, asset);
+            SetStatus("Clipboard image attached to selected step.");
+        }).ConfigureAwait(true);
+    }
+
+    private async void CaptureScreenshotButton_Click(object sender, RoutedEventArgs e)
+    {
+        var selectedStep = GetSelectedStep();
+        if (selectedStep is null || currentProject is null)
+        {
+            return;
+        }
+
+        await RunUiActionAsync(async () =>
+        {
+            try
+            {
+                WindowState = WindowState.Minimized;
+                await Task.Delay(300).ConfigureAwait(true);
+
+                await using var stream = CaptureVirtualScreenPng();
+                var asset = await assetFileStore.SavePngAsync(currentProject, $"screenshot {DateTime.Now:yyyyMMdd-HHmmss}", stream)
+                    .ConfigureAwait(true);
+                AttachAssetToStep(selectedStep, asset);
+
+                SetStatus("Screenshot captured and attached to selected step.");
+            }
+            finally
+            {
+                WindowState = WindowState.Normal;
+                Activate();
+            }
+        }).ConfigureAwait(true);
+    }
+
+    private void RemoveImageButton_Click(object sender, RoutedEventArgs e)
+    {
+        var selectedStep = GetSelectedStep();
+        if (selectedStep is null || StepAssetsListBox.SelectedItem is not EditableAsset selectedAsset)
+        {
+            return;
+        }
+
+        selectedStep.AssetIds.Remove(selectedAsset.Id);
+        RefreshSelectedStepAssets();
+        MarkDirty();
+        SetStatus("Image detached from selected step.");
+    }
+
+    private void InsertImageReferenceButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (StepAssetsListBox.SelectedItem is not EditableAsset selectedAsset)
+        {
+            return;
+        }
+
+        var token = $"[[image:{selectedAsset.RelativePath}]]";
+        var prefix = StepBodyTextBox.CaretIndex > 0 && !StepBodyTextBox.Text[..StepBodyTextBox.CaretIndex].EndsWith(Environment.NewLine, StringComparison.Ordinal)
+            ? Environment.NewLine
+            : string.Empty;
+        var suffix = Environment.NewLine;
+
+        StepBodyTextBox.SelectedText = prefix + token + suffix;
+        StepBodyTextBox.CaretIndex += prefix.Length + token.Length + suffix.Length;
+        StepBodyTextBox.Focus();
+
+        if (GetSelectedStep() is { } selectedStep)
+        {
+            selectedStep.Body = StepBodyTextBox.Text;
+        }
+
+        MarkDirty();
+        SetStatus("Image reference inserted into step text.");
+    }
+
     private void GuideTitleTextBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
     {
         if (!isUpdatingUi && currentMetadata is not null)
@@ -198,6 +349,12 @@ public partial class MainWindow : Window
     private void StepsListBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
         LoadSelectedStepIntoEditor();
+        RefreshSelectedStepAssets();
+        UpdateUiState();
+    }
+
+    private void StepAssetsListBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
         UpdateUiState();
     }
 
@@ -316,6 +473,7 @@ public partial class MainWindow : Window
 
         StepsListBox.SelectedIndex = steps.Count > 0 ? 0 : -1;
         LoadSelectedStepIntoEditor();
+        RefreshSelectedStepAssets();
 
         ProjectPathTextBlock.Text = project.ProjectDirectory;
         isDirty = false;
@@ -396,26 +554,113 @@ public partial class MainWindow : Window
         ExportGuideButton.IsEnabled = isEnabled;
         AddStepButton.IsEnabled = isEnabled;
         DeleteStepButton.IsEnabled = isEnabled;
+        ImportImageButton.IsEnabled = isEnabled;
+        PasteImageButton.IsEnabled = isEnabled;
+        CaptureScreenshotButton.IsEnabled = isEnabled;
+        InsertImageReferenceButton.IsEnabled = isEnabled;
+        RemoveImageButton.IsEnabled = isEnabled;
     }
 
     private void UpdateUiState()
     {
         var hasProject = currentProject is not null && currentMetadata is not null;
         var hasSelectedStep = StepsListBox.SelectedItem is EditableStep;
+        var hasSelectedAsset = StepAssetsListBox.SelectedItem is EditableAsset;
 
         SaveGuideButton.IsEnabled = hasProject;
         ExportGuideButton.IsEnabled = hasProject;
         AddStepButton.IsEnabled = hasProject;
         DeleteStepButton.IsEnabled = hasProject && hasSelectedStep;
+        ImportImageButton.IsEnabled = hasProject && hasSelectedStep;
+        PasteImageButton.IsEnabled = hasProject && hasSelectedStep;
+        CaptureScreenshotButton.IsEnabled = hasProject && hasSelectedStep;
+        InsertImageReferenceButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset;
+        RemoveImageButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset;
         GuideTitleTextBox.IsEnabled = hasProject;
         StepTitleTextBox.IsEnabled = hasSelectedStep;
         StepBodyTextBox.IsEnabled = hasSelectedStep;
         DirtyIndicatorTextBlock.Text = isDirty ? "Unsaved changes" : "Saved";
     }
 
+    private EditableStep? GetSelectedStep()
+    {
+        return StepsListBox.SelectedItem as EditableStep;
+    }
+
+    private void AttachAssetToStep(EditableStep step, GuideAsset asset)
+    {
+        currentAssets.Add(asset);
+        step.AssetIds.Add(asset.Id);
+        RefreshSelectedStepAssets();
+        MarkDirty();
+    }
+
+    private void RefreshSelectedStepAssets()
+    {
+        selectedStepAssets.Clear();
+
+        if (currentProject is null || GetSelectedStep() is not { } selectedStep)
+        {
+            return;
+        }
+
+        foreach (var assetId in selectedStep.AssetIds)
+        {
+            var asset = currentAssets.FirstOrDefault(candidate => candidate.Id == assetId);
+            if (asset is null)
+            {
+                continue;
+            }
+
+            selectedStepAssets.Add(EditableAsset.FromGuideAsset(currentProject.ProjectDirectory, asset));
+        }
+    }
+
+    private static MemoryStream EncodePng(BitmapSource image)
+    {
+        var stream = new MemoryStream();
+        var encoder = new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(image));
+        encoder.Save(stream);
+        stream.Position = 0;
+        return stream;
+    }
+
+    private static MemoryStream CaptureVirtualScreenPng()
+    {
+        var bounds = Forms.SystemInformation.VirtualScreen;
+        using var bitmap = new Drawing.Bitmap(bounds.Width, bounds.Height);
+        using var graphics = Drawing.Graphics.FromImage(bitmap);
+        graphics.CopyFromScreen(bounds.Left, bounds.Top, 0, 0, bounds.Size);
+
+        var stream = new MemoryStream();
+        bitmap.Save(stream, Drawing.Imaging.ImageFormat.Png);
+        stream.Position = 0;
+        return stream;
+    }
+
     private void SetStatus(string message)
     {
         StatusTextBlock.Text = message;
+    }
+
+    private void ApplyTheme(bool dark)
+    {
+        SetBrush("SurfaceBrush", dark ? "#1F1F1F" : "#FFFFFF");
+        SetBrush("CanvasBrush", dark ? "#121212" : "#F8FAFD");
+        SetBrush("PrimaryBrush", dark ? "#8AB4F8" : "#1A73E8");
+        SetBrush("PrimaryDarkBrush", dark ? "#669DF6" : "#1558B0");
+        SetBrush("TextBrush", dark ? "#E8EAED" : "#202124");
+        SetBrush("MutedTextBrush", dark ? "#BDC1C6" : "#5F6368");
+        SetBrush("BorderBrushSoft", dark ? "#3C4043" : "#DADCE0");
+        SetBrush("ButtonBackgroundBrush", dark ? "#2B2C2F" : "#FFFFFF");
+        SetBrush("ButtonHoverBrush", dark ? "#35363A" : "#F1F3F4");
+        SetBrush("InputBackgroundBrush", dark ? "#202124" : "#FFFFFF");
+    }
+
+    private void SetBrush(string key, string color)
+    {
+        Resources[key] = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
     }
 
     public sealed class EditableStep : INotifyPropertyChanged
@@ -506,6 +751,28 @@ public partial class MainWindow : Window
         private void OnPropertyChanged(string propertyName)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+    }
+
+    public sealed record EditableAsset
+    {
+        public required Guid Id { get; init; }
+
+        public required string Caption { get; init; }
+
+        public required string RelativePath { get; init; }
+
+        public required string FullPath { get; init; }
+
+        public static EditableAsset FromGuideAsset(string projectDirectory, GuideAsset asset)
+        {
+            return new EditableAsset
+            {
+                Id = asset.Id,
+                Caption = string.IsNullOrWhiteSpace(asset.Caption) ? Path.GetFileName(asset.RelativePath) : asset.Caption,
+                RelativePath = asset.RelativePath,
+                FullPath = Path.Combine(projectDirectory, asset.RelativePath.Replace('/', Path.DirectorySeparatorChar))
+            };
         }
     }
 }
