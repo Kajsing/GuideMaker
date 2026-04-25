@@ -6,7 +6,7 @@ Phase: Implementation
 
 Current milestone: Milestone 8 - MVP hardening
 
-Status: Milestone 7 PDF export and preview is complete. Next step is MVP hardening and workflow polish.
+Status: Milestone 8 MVP hardening is in progress. The first annotation editor controls have been added.
 
 ## Decision Log
 
@@ -38,6 +38,19 @@ Status: Milestone 7 PDF export and preview is complete. Next step is MVP hardeni
 | 2026-04-25 | Sensitive-content export warning added | Guide text and screenshots may contain internal data | Export asks the user to review content before writing Markdown, HTML, and PDF |
 | 2026-04-25 | Hard redaction moved to Milestone 8 | Visual overlays are not enough for sensitive content | Redaction should burn or blur pixels in exported output during hardening |
 | 2026-04-25 | Annotation editor moved to Milestone 8 | Current annotation buttons only add default-position overlays | Users need to select, move, resize, and edit labels before MVP hardening is complete |
+| 2026-04-25 | Initial annotation editor added | Authors need control over where highlights, arrows, labels, and redactions land | Selected image annotations can now be selected and adjusted with text and bounds controls |
+| 2026-04-25 | Annotation editor usability improved | Slider edits were losing selection and the preview was too small | Selection is preserved, X/Y respect object size, label editing no longer reverses text, and a larger live preview was added |
+| 2026-04-25 | Annotation editor follow-up items captured | Smoke testing showed remaining UX issues | M8 should revisit percentage sliders, width/height interaction, rotate controls, and hide/show UI organization |
+| 2026-04-25 | Annotation preview fit corrected | Editor preview used cropped image coordinates while export used fitted image coordinates | Thumbnail and editor overlays now use fitted image geometry; label text commits on Enter or focus lost |
+| 2026-04-25 | Workspace preview tabs added | The editor area was getting crowded and the annotation preview needed more room | Right preview pane now switches between guide preview and image annotation preview |
+| 2026-04-25 | Annotation tools moved into annotation panel | Image toolbar mixed asset actions and annotation actions | Import/paste/capture stay under Images; highlight/label/arrow/redact/remove mark are grouped under Annotations |
+| 2026-04-25 | Guide preview auto-refresh added | Guide preview could show stale annotation output while Image preview was live | Dirty changes regenerate `preview.html` after a short debounce; HTML redaction uses blur CSS where supported |
+| 2026-04-25 | Annotation panel made collapsible | Annotation controls could crowd the step editor when many marks existed | Annotation editor now has hide/show behavior and the annotation list scrolls |
+| 2026-04-25 | Annotation panel defaults closed | The main editing flow should not be dominated by annotation controls | Annotation tools start hidden and use more compact buttons/list sizing |
+| 2026-04-25 | Workspace pane made resizable | Guide and image previews need more space during review | A splitter now lets the author resize editor and workspace width |
+| 2026-04-25 | Asset selection preservation fixed | Committing annotation text on focus loss could force the old image selection back | Lost-focus text commits no longer refresh the asset list |
+| 2026-04-25 | Annotation text edits no longer refresh lists | Asset selection still snapped back when the annotation panel was open | Text edits update the selected annotation in memory without rebuilding asset or annotation lists |
+| 2026-04-25 | Asset clicks made authoritative | Pending annotation events could still restore the previous selected image | Mouse-down on an asset records the intended selection and prevents stale annotation refreshes from overriding it |
 
 ## Open Blockers
 
@@ -57,7 +70,7 @@ Status: Milestone 7 PDF export and preview is complete. Next step is MVP hardeni
 | 5 Images and screenshot capture | Complete | Import, paste, capture, attach, and preview wired |
 | 6 Basic annotation | Complete | Highlight, label, arrow, redaction overlays wired |
 | 7 PDF export and preview | Complete | PDFsharp export, local preview, and export warning added |
-| 8 MVP hardening | Ready | Annotation editor, hard redaction, final polish |
+| 8 MVP hardening | In progress | Annotation editor polish, rotate controls, hard redaction, hide/show UI, and final polish remain |
 
 ## Validation Log
 
@@ -83,6 +96,17 @@ Status: Milestone 7 PDF export and preview is complete. Next step is MVP hardeni
 | 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Release build and Debug tests passed; 21 tests passed |
 | 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | PDF export and preview build; 24 tests passed |
 | 2026-04-25 | `dotnet test .\GuideMaker.sln --configuration Release --no-restore` | Pass | Smart App Control no longer blocks Release tests; 24 tests passed |
+| 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Initial annotation editor build; Release tests passed; 24 tests passed |
+| 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Annotation editor usability fixes; Release tests passed; 24 tests passed |
+| 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Annotation preview fit correction; Release tests passed; 24 tests passed |
+| 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Workspace preview tabs build; Release tests passed; 24 tests passed |
+| 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Annotation toolbar move and guide preview auto-refresh; Release tests passed; 24 tests passed |
+| 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Collapsible annotation panel build; Release tests passed; 24 tests passed |
+| 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Compact closed annotation panel build; Release tests passed; 24 tests passed |
+| 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Resizable workspace pane build; Release tests passed; 24 tests passed |
+| 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Asset selection fix build; Release tests passed; 24 tests passed |
+| 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Quiet annotation text edit build; Release tests passed; 24 tests passed |
+| 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Authoritative asset click fix; Release tests passed; 24 tests passed |
 
 ## Known Risks
 
@@ -93,11 +117,22 @@ Status: Milestone 7 PDF export and preview is complete. Next step is MVP hardeni
 | Scope creep | High | Keep non-goals explicit in `docs/spec.md` and `AGENTS.md` |
 | Dark mode placement | Low | Move the topbar toggle into Settings when a Settings surface exists |
 | Image display sizing model | Medium | Introduce per-step image reference metadata before implementing size controls |
-| Annotation placement is not user-controlled yet | High | Add select, drag, resize, and label editing in Milestone 8 |
+| Annotation placement still needs richer direct manipulation | Medium | Initial select/edit/bounds controls are added; direct drag handles can follow if needed |
+| Annotation editor UI is getting crowded | Medium | Add hide/show or collapsible surfaces during M8 hardening |
+
+## Known M8 Bugs
+
+| Bug | Severity | Notes |
+|---|---|---|
+| Asset selection snaps back when Annotations is open | High | Clicking another image can still jump back to the previous image while the annotation panel is expanded. Likely caused by annotation editor selection/refresh/focus events competing with asset selection. |
+| Annotation expander arrow points the wrong way | Low | The hide/show arrow direction is visually confusing and should be corrected or replaced with clearer show/hide affordance. |
+| Redact is not true blur in the app workspace | Medium | Current UI preview uses a dark redact overlay. HTML may use CSS blur where supported, but MVP hardening still needs hard redaction/blur of exported pixels. |
+| Annotation percentage sliders are confusing | Medium | X/Y/Width/Height values interact awkwardly and should be redesigned or replaced with direct manipulation handles. |
+| Annotation controls are still clunky | Medium | Current compact buttons are better grouped but should become a cleaner tool strip or collapsible tool surface. |
 
 ## Next Recommended Step
 
-Start Milestone 8: polish the MVP workflow, improve error messages, review file safety, and document known limitations before packaging.
+Continue Milestone 8 by fixing the known annotation editor bugs, then implement hard redaction and final MVP polish.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1

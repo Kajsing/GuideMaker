@@ -4,7 +4,7 @@
 
 Current milestone: Milestone 8 - MVP Hardening.
 
-Status: Milestone 7 is complete. Guides can be previewed in the app and exported to Markdown, HTML, and PDF.
+Status: Milestone 8 is in progress. The first annotation editor controls are implemented.
 
 ## Milestone 0 - Research And Decisions
 
@@ -137,12 +137,16 @@ Acceptance:
 
 ## Milestone 8 - MVP Hardening
 
-Status: ready.
+Status: in progress.
 
 Scope:
 
 - polish primary workflow
 - add a usable annotation editor: select, move, resize, and edit label text
+- add annotation rotate controls
+- review annotation percentage/slider behavior and direct manipulation
+- reduce UI clutter with hide/show or collapsible editing surfaces
+- fix remaining annotation panel bugs: asset selection snap-back and wrong expander arrow direction
 - implement hard redaction for exported output instead of visual-only overlays
 - error messages
 - file safety

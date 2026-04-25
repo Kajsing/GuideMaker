@@ -187,7 +187,8 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="320" />
                 <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="380" />
+                <ColumnDefinition Width="8" />
+                <ColumnDefinition Width="420" MinWidth="320" />
             </Grid.ColumnDefinitions>
 
             <Border Grid.Column="0"
@@ -260,6 +261,7 @@
                         <RowDefinition Height="2*" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
                     <TextBlock Text="Guide"
@@ -332,36 +334,12 @@
                                 MinWidth="88"
                                 Margin="0,0,8,8"
                                 Click="RemoveImageButton_Click" />
-                            <Button x:Name="AddHighlightButton"
-                                Content="Highlight"
-                                MinWidth="88"
-                                Margin="0,0,8,8"
-                                Click="AddHighlightButton_Click" />
-                            <Button x:Name="AddLabelButton"
-                                Content="Label"
-                                MinWidth="72"
-                                Margin="0,0,8,8"
-                                Click="AddLabelButton_Click" />
-                            <Button x:Name="AddArrowButton"
-                                Content="Arrow"
-                                MinWidth="72"
-                                Margin="0,0,8,8"
-                                Click="AddArrowButton_Click" />
-                            <Button x:Name="AddRedactButton"
-                                Content="Redact"
-                                MinWidth="78"
-                                Margin="0,0,8,8"
-                                Click="AddRedactButton_Click" />
-                            <Button x:Name="RemoveAnnotationButton"
-                                Content="Remove mark"
-                                MinWidth="104"
-                                Margin="0,0,8,8"
-                                Click="RemoveAnnotationButton_Click" />
                         </WrapPanel>
                     </DockPanel>
 
                     <ListBox x:Name="StepAssetsListBox"
                              Grid.Row="5"
+                             PreviewMouseLeftButtonDown="StepAssetsListBox_PreviewMouseLeftButtonDown"
                              SelectionChanged="StepAssetsListBox_SelectionChanged">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
@@ -377,8 +355,15 @@
                                             Width="96"
                                             Height="64">
                                         <Grid ClipToBounds="True">
-                                            <Image Source="{Binding FullPath}"
-                                                   Stretch="UniformToFill" />
+                                            <Canvas Width="96"
+                                                    Height="64">
+                                                <Image Source="{Binding FullPath}"
+                                                       Canvas.Left="{Binding ThumbImageX}"
+                                                       Canvas.Top="{Binding ThumbImageY}"
+                                                       Width="{Binding ThumbImageWidth}"
+                                                       Height="{Binding ThumbImageHeight}"
+                                                       Stretch="Fill" />
+                                            </Canvas>
                                             <ItemsControl ItemsSource="{Binding Annotations}">
                                                 <ItemsControl.ItemsPanel>
                                                     <ItemsPanelTemplate>
@@ -388,14 +373,14 @@
                                                 </ItemsControl.ItemsPanel>
                                                 <ItemsControl.ItemContainerStyle>
                                                     <Style TargetType="ContentPresenter">
-                                                        <Setter Property="Canvas.Left" Value="{Binding X}" />
-                                                        <Setter Property="Canvas.Top" Value="{Binding Y}" />
+                                                        <Setter Property="Canvas.Left" Value="{Binding ThumbX}" />
+                                                        <Setter Property="Canvas.Top" Value="{Binding ThumbY}" />
                                                     </Style>
                                                 </ItemsControl.ItemContainerStyle>
                                                 <ItemsControl.ItemTemplate>
                                                     <DataTemplate>
-                                                        <Border Width="{Binding Width}"
-                                                                Height="{Binding Height}"
+                                                        <Border Width="{Binding ThumbWidth}"
+                                                                Height="{Binding ThumbHeight}"
                                                                 BorderBrush="{Binding BorderBrush}"
                                                                 BorderThickness="{Binding BorderThickness}"
                                                                 Background="{Binding Background}">
@@ -430,10 +415,200 @@
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
+
+                    <Border Grid.Row="6"
+                            Margin="0,14,0,0"
+                            Padding="12"
+                            BorderBrush="{DynamicResource BorderBrushSoft}"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Background="{DynamicResource CanvasBrush}">
+                        <Expander x:Name="AnnotationEditorExpander"
+                                  Header="Annotations"
+                                  IsExpanded="False"
+                                  Foreground="{DynamicResource TextBrush}">
+                            <Grid Margin="0,10,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="220" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <DockPanel>
+                                <WrapPanel DockPanel.Dock="Top"
+                                           Margin="0,0,0,8">
+                                    <TextBlock Text="Add"
+                                               Margin="0,0,8,6"
+                                               VerticalAlignment="Center"
+                                               Foreground="{DynamicResource MutedTextBrush}" />
+                                    <Button x:Name="AddHighlightButton"
+                                            Content="Box"
+                                            MinWidth="66"
+                                            MinHeight="30"
+                                            Padding="10,3"
+                                            Margin="0,0,8,6"
+                                            Click="AddHighlightButton_Click" />
+                                    <Button x:Name="AddLabelButton"
+                                            Content="Text"
+                                            MinWidth="72"
+                                            MinHeight="30"
+                                            Padding="10,3"
+                                            Margin="0,0,8,6"
+                                            Click="AddLabelButton_Click" />
+                                    <Button x:Name="AddArrowButton"
+                                            Content="Arrow"
+                                            MinWidth="72"
+                                            MinHeight="30"
+                                            Padding="10,3"
+                                            Margin="0,0,8,6"
+                                            Click="AddArrowButton_Click" />
+                                    <Button x:Name="AddRedactButton"
+                                            Content="Redact"
+                                            MinWidth="78"
+                                            MinHeight="30"
+                                            Padding="10,3"
+                                            Margin="0,0,8,6"
+                                            Click="AddRedactButton_Click" />
+                                    <Button x:Name="RemoveAnnotationButton"
+                                            Content="Delete"
+                                            MinWidth="78"
+                                            MinHeight="30"
+                                            Padding="10,3"
+                                            Margin="0,0,8,6"
+                                            Click="RemoveAnnotationButton_Click" />
+                                </WrapPanel>
+                                <ListBox x:Name="AnnotationListBox"
+                                         MinHeight="96"
+                                         MaxHeight="210"
+                                         ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                         SelectionChanged="AnnotationListBox_SelectionChanged">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Margin="4,4">
+                                                <TextBlock Text="{Binding Summary}"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource TextBrush}" />
+                                                <TextBlock Text="{Binding PositionSummary}"
+                                                           Margin="0,2,0,0"
+                                                           Foreground="{DynamicResource MutedTextBrush}" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                                </DockPanel>
+
+                                <Grid Grid.Column="1"
+                                      Margin="18,0,0,0">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="70" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="52" />
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock Text="Text"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource MutedTextBrush}" />
+                                <TextBox x:Name="AnnotationTextBox"
+                                         Grid.Column="1"
+                                         Grid.ColumnSpan="2"
+                                         TextChanged="AnnotationTextBox_TextChanged" />
+
+                                <TextBlock Grid.Row="1"
+                                           Text="X"
+                                           Margin="0,10,0,0"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource MutedTextBrush}" />
+                                <Slider x:Name="AnnotationXSlider"
+                                        Grid.Row="1"
+                                        Grid.Column="1"
+                                        Margin="0,10,10,0"
+                                        Minimum="0"
+                                        Maximum="100"
+                                        ValueChanged="AnnotationBoundsSlider_ValueChanged" />
+                                <TextBlock Grid.Row="1"
+                                           Grid.Column="2"
+                                           Text="{Binding ElementName=AnnotationXSlider, Path=Value, StringFormat={}{0:0}%}"
+                                           Margin="0,10,0,0"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource MutedTextBrush}" />
+
+                                <TextBlock Grid.Row="2"
+                                           Text="Y"
+                                           Margin="0,8,0,0"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource MutedTextBrush}" />
+                                <Slider x:Name="AnnotationYSlider"
+                                        Grid.Row="2"
+                                        Grid.Column="1"
+                                        Margin="0,8,10,0"
+                                        Minimum="0"
+                                        Maximum="100"
+                                        ValueChanged="AnnotationBoundsSlider_ValueChanged" />
+                                <TextBlock Grid.Row="2"
+                                           Grid.Column="2"
+                                           Text="{Binding ElementName=AnnotationYSlider, Path=Value, StringFormat={}{0:0}%}"
+                                           Margin="0,8,0,0"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource MutedTextBrush}" />
+
+                                <TextBlock Grid.Row="3"
+                                           Text="Width"
+                                           Margin="0,8,0,0"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource MutedTextBrush}" />
+                                <Slider x:Name="AnnotationWidthSlider"
+                                        Grid.Row="3"
+                                        Grid.Column="1"
+                                        Margin="0,8,10,0"
+                                        Minimum="1"
+                                        Maximum="100"
+                                        ValueChanged="AnnotationBoundsSlider_ValueChanged" />
+                                <TextBlock Grid.Row="3"
+                                           Grid.Column="2"
+                                           Text="{Binding ElementName=AnnotationWidthSlider, Path=Value, StringFormat={}{0:0}%}"
+                                           Margin="0,8,0,0"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource MutedTextBrush}" />
+
+                                <TextBlock Grid.Row="4"
+                                           Text="Height"
+                                           Margin="0,8,0,0"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource MutedTextBrush}" />
+                                <Slider x:Name="AnnotationHeightSlider"
+                                        Grid.Row="4"
+                                        Grid.Column="1"
+                                        Margin="0,8,10,0"
+                                        Minimum="1"
+                                        Maximum="100"
+                                        ValueChanged="AnnotationBoundsSlider_ValueChanged" />
+                                <TextBlock Grid.Row="4"
+                                           Grid.Column="2"
+                                           Text="{Binding ElementName=AnnotationHeightSlider, Path=Value, StringFormat={}{0:0}%}"
+                                           Margin="0,8,0,0"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource MutedTextBrush}" />
+                                </Grid>
+                            </Grid>
+                        </Expander>
+                    </Border>
                 </Grid>
             </Border>
 
-            <Border Grid.Column="2"
+            <GridSplitter Grid.Column="2"
+                          Width="8"
+                          HorizontalAlignment="Stretch"
+                          VerticalAlignment="Stretch"
+                          Background="Transparent"
+                          ShowsPreview="True" />
+
+            <Border Grid.Column="3"
                     Background="{DynamicResource SurfaceBrush}"
                     BorderBrush="{DynamicResource BorderBrushSoft}"
                     BorderThickness="1"
@@ -446,8 +621,9 @@
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
-                    <DockPanel Margin="0,0,0,10">
-                        <TextBlock Text="Preview"
+                    <DockPanel Margin="0,0,0,10"
+                               LastChildFill="False">
+                        <TextBlock Text="Workspace"
                                    FontSize="13"
                                    FontWeight="SemiBold"
                                    VerticalAlignment="Center"
@@ -455,16 +631,74 @@
                         <TextBlock x:Name="PreviewPathTextBlock"
                                    DockPanel.Dock="Right"
                                    Text="Not generated"
+                                   Margin="10,0,0,0"
                                    Foreground="{DynamicResource MutedTextBrush}"
                                    TextTrimming="CharacterEllipsis" />
                     </DockPanel>
 
-                    <Border Grid.Row="1"
-                            BorderBrush="{DynamicResource BorderBrushSoft}"
-                            BorderThickness="1"
-                            Background="#FFFFFF">
-                        <WebBrowser x:Name="GuidePreviewBrowser" />
-                    </Border>
+                    <TabControl x:Name="WorkspaceTabControl"
+                                Grid.Row="1">
+                        <TabItem x:Name="GuidePreviewTab"
+                                 Header="Guide">
+                            <Border BorderBrush="{DynamicResource BorderBrushSoft}"
+                                    BorderThickness="1"
+                                    Background="#FFFFFF">
+                                <WebBrowser x:Name="GuidePreviewBrowser" />
+                            </Border>
+                        </TabItem>
+                        <TabItem x:Name="ImagePreviewTab"
+                                 Header="Image">
+                            <Border BorderBrush="{DynamicResource BorderBrushSoft}"
+                                    BorderThickness="1"
+                                    Background="#FFFFFF"
+                                    ClipToBounds="True">
+                                <Viewbox Stretch="Uniform">
+                                    <Grid Width="340"
+                                          Height="520">
+                                        <Canvas Width="340"
+                                                Height="520">
+                                            <Image Source="{Binding ElementName=StepAssetsListBox, Path=SelectedItem.FullPath}"
+                                                   Canvas.Left="{Binding ElementName=StepAssetsListBox, Path=SelectedItem.WorkspaceImageX}"
+                                                   Canvas.Top="{Binding ElementName=StepAssetsListBox, Path=SelectedItem.WorkspaceImageY}"
+                                                   Width="{Binding ElementName=StepAssetsListBox, Path=SelectedItem.WorkspaceImageWidth}"
+                                                   Height="{Binding ElementName=StepAssetsListBox, Path=SelectedItem.WorkspaceImageHeight}"
+                                                   Stretch="Fill" />
+                                        </Canvas>
+                                        <ItemsControl ItemsSource="{Binding ElementName=StepAssetsListBox, Path=SelectedItem.Annotations}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <Canvas Width="340"
+                                                            Height="520" />
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemContainerStyle>
+                                                <Style TargetType="ContentPresenter">
+                                                    <Setter Property="Canvas.Left" Value="{Binding WorkspaceX}" />
+                                                    <Setter Property="Canvas.Top" Value="{Binding WorkspaceY}" />
+                                                </Style>
+                                            </ItemsControl.ItemContainerStyle>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Width="{Binding WorkspaceWidthValue}"
+                                                            Height="{Binding WorkspaceHeightValue}"
+                                                            BorderBrush="{Binding BorderBrush}"
+                                                            BorderThickness="{Binding BorderThickness}"
+                                                            Background="{Binding Background}">
+                                                        <TextBlock Text="{Binding Text}"
+                                                                   Foreground="#FFFFFF"
+                                                                   FontSize="13"
+                                                                   FontWeight="SemiBold"
+                                                                   Margin="6,3"
+                                                                   TextTrimming="CharacterEllipsis" />
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </Grid>
+                                </Viewbox>
+                            </Border>
+                        </TabItem>
+                    </TabControl>
                 </Grid>
             </Border>
         </Grid>

@@ -4,6 +4,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using GuideMaker.Core;
 using GuideMaker.Export;
 using GuideMaker.Storage;
@@ -23,13 +24,23 @@ public partial class MainWindow : Window
     private readonly HtmlGuideExporter previewExporter = new();
     private readonly ObservableCollection<EditableStep> steps = [];
     private readonly ObservableCollection<EditableAsset> selectedStepAssets = [];
+    private readonly ObservableCollection<EditableAnnotation> selectedAssetAnnotations = [];
+    private readonly DispatcherTimer guidePreviewRefreshTimer = new()
+    {
+        Interval = TimeSpan.FromMilliseconds(450)
+    };
 
     private GuideProject? currentProject;
     private GuideMetadata? currentMetadata;
     private List<GuideAsset> currentAssets = [];
+    private Guid? selectedAssetId;
+    private Guid? pendingAssetSelectionId;
+    private Guid? selectedAnnotationId;
     private bool isDarkMode;
     private bool isDirty;
     private bool isUpdatingUi;
+    private bool isRefreshingAssets;
+    private bool isRefreshingAnnotations;
     private bool closeAlreadyConfirmed;
 
     public MainWindow()
@@ -38,6 +49,8 @@ public partial class MainWindow : Window
 
         StepsListBox.ItemsSource = steps;
         StepAssetsListBox.ItemsSource = selectedStepAssets;
+        AnnotationListBox.ItemsSource = selectedAssetAnnotations;
+        guidePreviewRefreshTimer.Tick += GuidePreviewRefreshTimer_Tick;
         ApplyTheme(isDarkMode);
         UpdateUiState();
     }
@@ -167,6 +180,7 @@ public partial class MainWindow : Window
             var previewPath = await WritePreviewAsync().ConfigureAwait(true);
             GuidePreviewBrowser.Navigate(new Uri(previewPath));
             PreviewPathTextBlock.Text = previewPath;
+            WorkspaceTabControl.SelectedItem = GuidePreviewTab;
             SetStatus("Preview updated.");
         }).ConfigureAwait(true);
     }
@@ -310,6 +324,7 @@ public partial class MainWindow : Window
 
         selectedStep.AssetIds.Remove(selectedAsset.Id);
         RefreshSelectedStepAssets();
+        RefreshSelectedAssetAnnotations();
         MarkDirty();
         SetStatus("Image detached from selected step.");
     }
@@ -342,14 +357,18 @@ public partial class MainWindow : Window
             return;
         }
 
-        var annotation = selectedStep.Annotations.LastOrDefault(candidate => candidate.AssetId == selectedAsset.Id);
+        var annotation = AnnotationListBox.SelectedItem is EditableAnnotation selectedAnnotation
+            ? selectedStep.Annotations.FirstOrDefault(candidate => candidate.Id == selectedAnnotation.Id)
+            : selectedStep.Annotations.LastOrDefault(candidate => candidate.AssetId == selectedAsset.Id);
         if (annotation is null)
         {
             return;
         }
 
         selectedStep.Annotations.Remove(annotation);
-        RefreshSelectedStepAssets();
+        selectedAnnotationId = null;
+        RefreshSelectedStepAssets(selectedAsset.Id);
+        RefreshSelectedAssetAnnotations();
         MarkDirty();
         SetStatus("Annotation removed from selected image.");
     }
@@ -414,12 +433,94 @@ public partial class MainWindow : Window
     {
         LoadSelectedStepIntoEditor();
         RefreshSelectedStepAssets();
+        RefreshSelectedAssetAnnotations();
         UpdateUiState();
+    }
+
+    private void StepAssetsListBox_PreviewMouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (System.Windows.Controls.ItemsControl.ContainerFromElement(
+                StepAssetsListBox,
+                e.OriginalSource as DependencyObject) is System.Windows.Controls.ListBoxItem { DataContext: EditableAsset asset })
+        {
+            pendingAssetSelectionId = asset.Id;
+        }
     }
 
     private void StepAssetsListBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
+        if (isRefreshingAssets)
+        {
+            return;
+        }
+
+        if (StepAssetsListBox.SelectedItem is EditableAsset selectedAsset)
+        {
+            selectedAssetId = selectedAsset.Id;
+        }
+
+        pendingAssetSelectionId = null;
+        selectedAnnotationId = null;
+
+        RefreshSelectedAssetAnnotations();
         UpdateUiState();
+    }
+
+    private void AnnotationListBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (isRefreshingAnnotations)
+        {
+            return;
+        }
+
+        if (AnnotationListBox.SelectedItem is EditableAnnotation selectedAnnotation)
+        {
+            selectedAnnotationId = selectedAnnotation.Id;
+        }
+
+        LoadSelectedAnnotationIntoEditor();
+        UpdateUiState();
+    }
+
+    private void AnnotationTextBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+    {
+        if (isUpdatingUi || GetSelectedAnnotation() is not { } annotation)
+        {
+            return;
+        }
+
+        UpdateSelectedAnnotationQuietly(annotation with
+        {
+            Text = string.IsNullOrWhiteSpace(AnnotationTextBox.Text) ? null : AnnotationTextBox.Text
+        });
+    }
+
+    private void AnnotationBoundsSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (isUpdatingUi || GetSelectedAnnotation() is not { } annotation)
+        {
+            return;
+        }
+
+        var requestedWidth = AnnotationWidthSlider.Value / 100;
+        var requestedHeight = AnnotationHeightSlider.Value / 100;
+        var requestedX = AnnotationXSlider.Value / 100;
+        var requestedY = AnnotationYSlider.Value / 100;
+        var width = Math.Clamp(requestedWidth, 0.01, Math.Max(0.01, 1 - requestedX));
+        var height = Math.Clamp(requestedHeight, 0.01, Math.Max(0.01, 1 - requestedY));
+        var x = Math.Clamp(requestedX, 0, 1 - width);
+        var y = Math.Clamp(requestedY, 0, 1 - height);
+
+        UpdateSelectedAnnotation(annotation with
+        {
+            Bounds = new AnnotationBounds
+            {
+                X = x,
+                Y = y,
+                Width = width,
+                Height = height
+            }
+        });
     }
 
     private async void Window_Closing(object? sender, CancelEventArgs e)
@@ -567,6 +668,7 @@ public partial class MainWindow : Window
         StepsListBox.SelectedIndex = steps.Count > 0 ? 0 : -1;
         LoadSelectedStepIntoEditor();
         RefreshSelectedStepAssets();
+        RefreshSelectedAssetAnnotations();
 
         ProjectPathTextBlock.Text = project.ProjectDirectory;
         isDirty = false;
@@ -628,7 +730,40 @@ public partial class MainWindow : Window
     private void MarkDirty()
     {
         isDirty = true;
+        ScheduleGuidePreviewRefresh();
         UpdateUiState();
+    }
+
+    private void ScheduleGuidePreviewRefresh()
+    {
+        if (currentProject is null || currentMetadata is null)
+        {
+            return;
+        }
+
+        guidePreviewRefreshTimer.Stop();
+        guidePreviewRefreshTimer.Start();
+    }
+
+    private async void GuidePreviewRefreshTimer_Tick(object? sender, EventArgs e)
+    {
+        guidePreviewRefreshTimer.Stop();
+
+        if (currentProject is null || currentMetadata is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var previewPath = await WritePreviewAsync().ConfigureAwait(true);
+            GuidePreviewBrowser.Navigate(new Uri(previewPath));
+            PreviewPathTextBlock.Text = previewPath;
+        }
+        catch
+        {
+            SetStatus("Preview refresh failed.");
+        }
     }
 
     private void RenumberSteps()
@@ -658,6 +793,12 @@ public partial class MainWindow : Window
         AddArrowButton.IsEnabled = isEnabled;
         AddRedactButton.IsEnabled = isEnabled;
         RemoveAnnotationButton.IsEnabled = isEnabled;
+        AnnotationListBox.IsEnabled = isEnabled;
+        AnnotationTextBox.IsEnabled = isEnabled;
+        AnnotationXSlider.IsEnabled = isEnabled;
+        AnnotationYSlider.IsEnabled = isEnabled;
+        AnnotationWidthSlider.IsEnabled = isEnabled;
+        AnnotationHeightSlider.IsEnabled = isEnabled;
     }
 
     private void UpdateUiState()
@@ -665,6 +806,7 @@ public partial class MainWindow : Window
         var hasProject = currentProject is not null && currentMetadata is not null;
         var hasSelectedStep = StepsListBox.SelectedItem is EditableStep;
         var hasSelectedAsset = StepAssetsListBox.SelectedItem is EditableAsset;
+        var hasSelectedAnnotation = AnnotationListBox.SelectedItem is EditableAnnotation;
 
         SaveGuideButton.IsEnabled = hasProject;
         PreviewGuideButton.IsEnabled = hasProject;
@@ -680,7 +822,13 @@ public partial class MainWindow : Window
         AddLabelButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset;
         AddArrowButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset;
         AddRedactButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset;
-        RemoveAnnotationButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset;
+        RemoveAnnotationButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset && selectedAssetAnnotations.Count > 0;
+        AnnotationListBox.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset;
+        AnnotationTextBox.IsEnabled = hasProject && hasSelectedAnnotation && GetSelectedAnnotation()?.Kind == GuideAnnotationKind.Label;
+        AnnotationXSlider.IsEnabled = hasProject && hasSelectedAnnotation;
+        AnnotationYSlider.IsEnabled = hasProject && hasSelectedAnnotation;
+        AnnotationWidthSlider.IsEnabled = hasProject && hasSelectedAnnotation;
+        AnnotationHeightSlider.IsEnabled = hasProject && hasSelectedAnnotation;
         GuideTitleTextBox.IsEnabled = hasProject;
         StepTitleTextBox.IsEnabled = hasSelectedStep;
         StepBodyTextBox.IsEnabled = hasSelectedStep;
@@ -708,16 +856,20 @@ public partial class MainWindow : Window
             return;
         }
 
-        selectedStep.Annotations.Add(new GuideAnnotation
+        var annotation = new GuideAnnotation
         {
             Id = Guid.NewGuid(),
             Kind = kind,
             AssetId = selectedAsset.Id,
             Text = text,
             Bounds = CreateDefaultBounds(kind, selectedStep.Annotations.Count(annotation => annotation.AssetId == selectedAsset.Id))
-        });
+        };
 
-        RefreshSelectedStepAssets();
+        selectedStep.Annotations.Add(annotation);
+        selectedAnnotationId = annotation.Id;
+
+        RefreshSelectedStepAssets(selectedAsset.Id);
+        RefreshSelectedAssetAnnotations(annotation.Id);
         MarkDirty();
         SetStatus($"{kind} annotation added to selected image.");
     }
@@ -734,12 +886,18 @@ public partial class MainWindow : Window
         };
     }
 
-    private void RefreshSelectedStepAssets()
+    private void RefreshSelectedStepAssets(Guid? preferredAssetId = null)
     {
+        var targetAssetId = pendingAssetSelectionId
+            ?? preferredAssetId
+            ?? selectedAssetId
+            ?? (StepAssetsListBox.SelectedItem as EditableAsset)?.Id;
+        isRefreshingAssets = true;
         selectedStepAssets.Clear();
 
         if (currentProject is null || GetSelectedStep() is not { } selectedStep)
         {
+            isRefreshingAssets = false;
             return;
         }
 
@@ -756,6 +914,136 @@ public partial class MainWindow : Window
                 asset,
                 selectedStep.Annotations.Where(annotation => annotation.AssetId == asset.Id)));
         }
+
+        StepAssetsListBox.SelectedItem = selectedStepAssets.FirstOrDefault(asset => asset.Id == targetAssetId)
+            ?? selectedStepAssets.FirstOrDefault();
+        selectedAssetId = (StepAssetsListBox.SelectedItem as EditableAsset)?.Id;
+        isRefreshingAssets = false;
+    }
+
+    private void RefreshSelectedAssetAnnotations(Guid? preferredAnnotationId = null, bool reloadEditor = true)
+    {
+        var targetAnnotationId = preferredAnnotationId ?? selectedAnnotationId;
+        isRefreshingAnnotations = true;
+        selectedAssetAnnotations.Clear();
+
+        if (GetSelectedStep() is not { } selectedStep || StepAssetsListBox.SelectedItem is not EditableAsset selectedAsset)
+        {
+            isRefreshingAnnotations = false;
+            if (reloadEditor)
+            {
+                LoadSelectedAnnotationIntoEditor();
+            }
+
+            return;
+        }
+
+        foreach (var annotation in selectedStep.Annotations.Where(annotation => annotation.AssetId == selectedAsset.Id))
+        {
+            selectedAssetAnnotations.Add(EditableAnnotation.FromGuideAnnotation(annotation));
+        }
+
+        AnnotationListBox.SelectedItem = selectedAssetAnnotations.FirstOrDefault(annotation => annotation.Id == targetAnnotationId)
+            ?? selectedAssetAnnotations.FirstOrDefault();
+        isRefreshingAnnotations = false;
+        if (reloadEditor)
+        {
+            LoadSelectedAnnotationIntoEditor();
+        }
+    }
+
+    private GuideAnnotation? GetSelectedAnnotation()
+    {
+        if (GetSelectedStep() is not { } selectedStep || AnnotationListBox.SelectedItem is not EditableAnnotation selectedAnnotation)
+        {
+            return null;
+        }
+
+        return selectedStep.Annotations.FirstOrDefault(annotation => annotation.Id == selectedAnnotation.Id);
+    }
+
+    private void UpdateSelectedAnnotation(GuideAnnotation updatedAnnotation, bool reloadEditor = true, bool refreshAssets = true)
+    {
+        var selectedStep = GetSelectedStep();
+        if (selectedStep is null)
+        {
+            return;
+        }
+
+        var index = selectedStep.Annotations.FindIndex(annotation => annotation.Id == updatedAnnotation.Id);
+        if (index < 0)
+        {
+            return;
+        }
+
+        selectedStep.Annotations[index] = updatedAnnotation;
+        selectedAnnotationId = updatedAnnotation.Id;
+        var currentOrPendingAssetId = pendingAssetSelectionId ?? (StepAssetsListBox.SelectedItem as EditableAsset)?.Id;
+        if (refreshAssets && currentOrPendingAssetId == updatedAnnotation.AssetId)
+        {
+            RefreshSelectedStepAssets(updatedAnnotation.AssetId);
+        }
+
+        RefreshSelectedAssetAnnotations(updatedAnnotation.Id, reloadEditor);
+        MarkDirty();
+    }
+
+    private void UpdateSelectedAnnotationQuietly(GuideAnnotation updatedAnnotation)
+    {
+        var selectedStep = GetSelectedStep();
+        if (selectedStep is null)
+        {
+            return;
+        }
+
+        var index = selectedStep.Annotations.FindIndex(annotation => annotation.Id == updatedAnnotation.Id);
+        if (index < 0)
+        {
+            return;
+        }
+
+        selectedStep.Annotations[index] = updatedAnnotation;
+        selectedAnnotationId = updatedAnnotation.Id;
+        isDirty = true;
+        ScheduleGuidePreviewRefresh();
+        UpdateUiState();
+    }
+
+    private void LoadSelectedAnnotationIntoEditor()
+    {
+        isUpdatingUi = true;
+
+        if (GetSelectedAnnotation() is { } annotation)
+        {
+            ApplyAnnotationSliderRanges(annotation.Bounds);
+            AnnotationTextBox.Text = annotation.Text ?? string.Empty;
+            AnnotationXSlider.Value = annotation.Bounds.X * 100;
+            AnnotationYSlider.Value = annotation.Bounds.Y * 100;
+            AnnotationWidthSlider.Value = annotation.Bounds.Width * 100;
+            AnnotationHeightSlider.Value = annotation.Bounds.Height * 100;
+        }
+        else
+        {
+            AnnotationTextBox.Text = string.Empty;
+            AnnotationXSlider.Value = 0;
+            AnnotationYSlider.Value = 0;
+            AnnotationWidthSlider.Value = 1;
+            AnnotationHeightSlider.Value = 1;
+            AnnotationXSlider.Maximum = 100;
+            AnnotationYSlider.Maximum = 100;
+            AnnotationWidthSlider.Maximum = 100;
+            AnnotationHeightSlider.Maximum = 100;
+        }
+
+        isUpdatingUi = false;
+    }
+
+    private void ApplyAnnotationSliderRanges(AnnotationBounds bounds)
+    {
+        AnnotationXSlider.Maximum = Math.Max(0, (1 - bounds.Width) * 100);
+        AnnotationYSlider.Maximum = Math.Max(0, (1 - bounds.Height) * 100);
+        AnnotationWidthSlider.Maximum = Math.Max(1, (1 - bounds.X) * 100);
+        AnnotationHeightSlider.Maximum = Math.Max(1, (1 - bounds.Y) * 100);
     }
 
     private static MemoryStream EncodePng(BitmapSource image)
@@ -910,30 +1198,154 @@ public partial class MainWindow : Window
 
         public required IReadOnlyList<EditableAnnotationPreview> Annotations { get; init; }
 
+        public required double ThumbImageX { get; init; }
+
+        public required double ThumbImageY { get; init; }
+
+        public required double ThumbImageWidth { get; init; }
+
+        public required double ThumbImageHeight { get; init; }
+
+        public required double EditorImageX { get; init; }
+
+        public required double EditorImageY { get; init; }
+
+        public required double EditorImageWidth { get; init; }
+
+        public required double EditorImageHeight { get; init; }
+
+        public required double WorkspaceImageX { get; init; }
+
+        public required double WorkspaceImageY { get; init; }
+
+        public required double WorkspaceImageWidth { get; init; }
+
+        public required double WorkspaceImageHeight { get; init; }
+
         public static EditableAsset FromGuideAsset(string projectDirectory, GuideAsset asset, IEnumerable<GuideAnnotation> annotations)
         {
+            const double thumbFrameWidth = 96;
+            const double thumbFrameHeight = 64;
+            const double editorFrameWidth = 360;
+            const double editorFrameHeight = 210;
+            const double workspaceFrameWidth = 340;
+            const double workspaceFrameHeight = 520;
+
             var annotationList = annotations.ToArray();
+            var fullPath = Path.Combine(projectDirectory, asset.RelativePath.Replace('/', Path.DirectorySeparatorChar));
+            var imageSize = ReadImageSize(fullPath);
+            var thumbGeometry = CalculateFitGeometry(thumbFrameWidth, thumbFrameHeight, imageSize.Width, imageSize.Height);
+            var editorGeometry = CalculateFitGeometry(editorFrameWidth, editorFrameHeight, imageSize.Width, imageSize.Height);
+            var workspaceGeometry = CalculateFitGeometry(workspaceFrameWidth, workspaceFrameHeight, imageSize.Width, imageSize.Height);
+
             return new EditableAsset
             {
                 Id = asset.Id,
                 Caption = string.IsNullOrWhiteSpace(asset.Caption) ? Path.GetFileName(asset.RelativePath) : asset.Caption,
                 RelativePath = asset.RelativePath,
-                FullPath = Path.Combine(projectDirectory, asset.RelativePath.Replace('/', Path.DirectorySeparatorChar)),
+                FullPath = fullPath,
                 AnnotationSummary = annotationList.Length == 0 ? "No annotations" : $"{annotationList.Length} annotation(s)",
-                Annotations = annotationList.Select(EditableAnnotationPreview.FromGuideAnnotation).ToArray()
+                Annotations = annotationList.Select(annotation => EditableAnnotationPreview.FromGuideAnnotation(annotation, thumbGeometry, editorGeometry, workspaceGeometry)).ToArray(),
+                ThumbImageX = thumbGeometry.X,
+                ThumbImageY = thumbGeometry.Y,
+                ThumbImageWidth = thumbGeometry.Width,
+                ThumbImageHeight = thumbGeometry.Height,
+                EditorImageX = editorGeometry.X,
+                EditorImageY = editorGeometry.Y,
+                EditorImageWidth = editorGeometry.Width,
+                EditorImageHeight = editorGeometry.Height,
+                WorkspaceImageX = workspaceGeometry.X,
+                WorkspaceImageY = workspaceGeometry.Y,
+                WorkspaceImageWidth = workspaceGeometry.Width,
+                WorkspaceImageHeight = workspaceGeometry.Height
             };
+        }
+
+        private static PreviewGeometry ReadImageSize(string fullPath)
+        {
+            if (!File.Exists(fullPath))
+            {
+                return new PreviewGeometry(0, 0, 1, 1);
+            }
+
+            try
+            {
+                using var image = Drawing.Image.FromFile(fullPath);
+                return new PreviewGeometry(0, 0, image.Width, image.Height);
+            }
+            catch
+            {
+                return new PreviewGeometry(0, 0, 1, 1);
+            }
+        }
+
+        private static PreviewGeometry CalculateFitGeometry(double frameWidth, double frameHeight, double imageWidth, double imageHeight)
+        {
+            if (imageWidth <= 0 || imageHeight <= 0)
+            {
+                return new PreviewGeometry(0, 0, frameWidth, frameHeight);
+            }
+
+            var scale = Math.Min(frameWidth / imageWidth, frameHeight / imageHeight);
+            var width = imageWidth * scale;
+            var height = imageHeight * scale;
+            return new PreviewGeometry((frameWidth - width) / 2, (frameHeight - height) / 2, width, height);
+        }
+    }
+
+    public sealed record PreviewGeometry(double X, double Y, double Width, double Height);
+
+    public sealed record EditableAnnotation
+    {
+        public required Guid Id { get; init; }
+
+        public required string Summary { get; init; }
+
+        public required string PositionSummary { get; init; }
+
+        public static EditableAnnotation FromGuideAnnotation(GuideAnnotation annotation)
+        {
+            var text = string.IsNullOrWhiteSpace(annotation.Text) ? string.Empty : $" - {annotation.Text}";
+            var kind = annotation.Kind == GuideAnnotationKind.Blur ? "Redact" : annotation.Kind.ToString();
+            return new EditableAnnotation
+            {
+                Id = annotation.Id,
+                Summary = $"{kind}{text}",
+                PositionSummary = $"X {ToPercent(annotation.Bounds.X)}, Y {ToPercent(annotation.Bounds.Y)}, W {ToPercent(annotation.Bounds.Width)}, H {ToPercent(annotation.Bounds.Height)}"
+            };
+        }
+
+        private static string ToPercent(double value)
+        {
+            return $"{value * 100:0}%";
         }
     }
 
     public sealed record EditableAnnotationPreview
     {
-        public required double X { get; init; }
+        public required double ThumbX { get; init; }
 
-        public required double Y { get; init; }
+        public required double ThumbY { get; init; }
 
-        public required double Width { get; init; }
+        public required double ThumbWidth { get; init; }
 
-        public required double Height { get; init; }
+        public required double ThumbHeight { get; init; }
+
+        public required double EditorX { get; init; }
+
+        public required double EditorY { get; init; }
+
+        public required double EditorWidthValue { get; init; }
+
+        public required double EditorHeightValue { get; init; }
+
+        public required double WorkspaceX { get; init; }
+
+        public required double WorkspaceY { get; init; }
+
+        public required double WorkspaceWidthValue { get; init; }
+
+        public required double WorkspaceHeightValue { get; init; }
 
         public required System.Windows.Media.Brush BorderBrush { get; init; }
 
@@ -943,35 +1355,52 @@ public partial class MainWindow : Window
 
         public string? Text { get; init; }
 
-        public static EditableAnnotationPreview FromGuideAnnotation(GuideAnnotation annotation)
+        public static EditableAnnotationPreview FromGuideAnnotation(
+            GuideAnnotation annotation,
+            PreviewGeometry thumbGeometry,
+            PreviewGeometry editorGeometry,
+            PreviewGeometry workspaceGeometry)
         {
             return new EditableAnnotationPreview
             {
-                X = annotation.Bounds.X * 96,
-                Y = annotation.Bounds.Y * 64,
-                Width = annotation.Bounds.Width * 96,
-                Height = annotation.Bounds.Height * 64,
+                ThumbX = thumbGeometry.X + annotation.Bounds.X * thumbGeometry.Width,
+                ThumbY = thumbGeometry.Y + annotation.Bounds.Y * thumbGeometry.Height,
+                ThumbWidth = annotation.Bounds.Width * thumbGeometry.Width,
+                ThumbHeight = annotation.Bounds.Height * thumbGeometry.Height,
+                EditorX = editorGeometry.X + annotation.Bounds.X * editorGeometry.Width,
+                EditorY = editorGeometry.Y + annotation.Bounds.Y * editorGeometry.Height,
+                EditorWidthValue = annotation.Bounds.Width * editorGeometry.Width,
+                EditorHeightValue = annotation.Bounds.Height * editorGeometry.Height,
+                WorkspaceX = workspaceGeometry.X + annotation.Bounds.X * workspaceGeometry.Width,
+                WorkspaceY = workspaceGeometry.Y + annotation.Bounds.Y * workspaceGeometry.Height,
+                WorkspaceWidthValue = annotation.Bounds.Width * workspaceGeometry.Width,
+                WorkspaceHeightValue = annotation.Bounds.Height * workspaceGeometry.Height,
                 BorderBrush = annotation.Kind switch
                 {
                     GuideAnnotationKind.Arrow => System.Windows.Media.Brushes.Red,
                     GuideAnnotationKind.Label => System.Windows.Media.Brushes.DodgerBlue,
-                    GuideAnnotationKind.Blur => System.Windows.Media.Brushes.Black,
+                    GuideAnnotationKind.Blur => System.Windows.Media.Brushes.DimGray,
                     _ => System.Windows.Media.Brushes.Gold
                 },
                 Background = annotation.Kind switch
                 {
                     GuideAnnotationKind.Label => new SolidColorBrush(System.Windows.Media.Color.FromArgb(230, 26, 115, 232)),
-                    GuideAnnotationKind.Blur => new SolidColorBrush(System.Windows.Media.Color.FromArgb(190, 32, 33, 36)),
+                    GuideAnnotationKind.Blur => new SolidColorBrush(System.Windows.Media.Color.FromArgb(245, 32, 33, 36)),
                     GuideAnnotationKind.Arrow => System.Windows.Media.Brushes.Red,
                     _ => new SolidColorBrush(System.Windows.Media.Color.FromArgb(45, 251, 188, 4))
                 },
                 BorderThickness = annotation.Kind switch
                 {
                     GuideAnnotationKind.Arrow => new Thickness(0, 2, 0, 0),
-                    GuideAnnotationKind.Blur => new Thickness(0),
+                    GuideAnnotationKind.Blur => new Thickness(1),
                     _ => new Thickness(2)
                 },
-                Text = annotation.Kind == GuideAnnotationKind.Label ? annotation.Text : null
+                Text = annotation.Kind switch
+                {
+                    GuideAnnotationKind.Label => annotation.Text,
+                    GuideAnnotationKind.Blur => "REDACT",
+                    _ => null
+                }
             };
         }
     }
