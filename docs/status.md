@@ -51,6 +51,9 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | 2026-04-25 | Asset selection preservation fixed | Committing annotation text on focus loss could force the old image selection back | Lost-focus text commits no longer refresh the asset list |
 | 2026-04-25 | Annotation text edits no longer refresh lists | Asset selection still snapped back when the annotation panel was open | Text edits update the selected annotation in memory without rebuilding asset or annotation lists |
 | 2026-04-25 | Asset clicks made authoritative | Pending annotation events could still restore the previous selected image | Mouse-down on an asset records the intended selection and prevents stale annotation refreshes from overriding it |
+| 2026-04-25 | Annotation selection state model refactored | Asset selection still snapped back when Annotations was open | Image and annotation selection now use explicit IDs as source of truth instead of WPF list selection |
+| 2026-04-25 | Asset selection moved to preview mouse-down | Focus-loss events from annotation controls could still run before image selection changed | Image clicks now apply selected asset before annotation text/slider events can refresh selection |
+| 2026-04-25 | Image list hitbox stabilized | Layout movement during image selection could let the same click finish on another row | Image rows now have fixed height and handled preview clicks |
 
 ## Open Blockers
 
@@ -107,6 +110,11 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Asset selection fix build; Release tests passed; 24 tests passed |
 | 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Quiet annotation text edit build; Release tests passed; 24 tests passed |
 | 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Authoritative asset click fix; Release tests passed; 24 tests passed |
+| 2026-04-25 | `git diff --check` | Pass | Selection-state refactor whitespace check clean |
+| 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Annotation selection state refactor build; Release tests passed; 24 tests passed |
+| 2026-04-25 | `git diff --check` | Pass | Preview mouse-down selection fix whitespace check clean |
+| 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Preview mouse-down selection fix build; Release tests passed; 24 tests passed |
+| 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Image list hitbox stabilization build; Release tests passed; 24 tests passed |
 
 ## Known Risks
 
@@ -124,7 +132,7 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 
 | Bug | Severity | Notes |
 |---|---|---|
-| Asset selection snaps back when Annotations is open | High | Clicking another image can still jump back to the previous image while the annotation panel is expanded. Likely caused by annotation editor selection/refresh/focus events competing with asset selection. |
+| Asset selection snaps back when Annotations is open | High | Refactored so explicit asset/annotation IDs are the source of truth instead of WPF list selection. Needs user smoke test with the annotation panel expanded. |
 | Annotation expander arrow points the wrong way | Low | The hide/show arrow direction is visually confusing and should be corrected or replaced with clearer show/hide affordance. |
 | Redact is not true blur in the app workspace | Medium | Current UI preview uses a dark redact overlay. HTML may use CSS blur where supported, but MVP hardening still needs hard redaction/blur of exported pixels. |
 | Annotation percentage sliders are confusing | Medium | X/Y/Width/Height values interact awkwardly and should be redesigned or replaced with direct manipulation handles. |
@@ -132,7 +140,7 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 
 ## Next Recommended Step
 
-Continue Milestone 8 by fixing the known annotation editor bugs, then implement hard redaction and final MVP polish.
+Smoke test the annotation selection refactor with Annotations expanded. If it holds, continue Milestone 8 with the expander arrow, hard redaction, rotate controls, and final MVP polish.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1

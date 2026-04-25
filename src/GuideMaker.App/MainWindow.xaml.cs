@@ -34,11 +34,11 @@ public partial class MainWindow : Window
     private GuideMetadata? currentMetadata;
     private List<GuideAsset> currentAssets = [];
     private Guid? selectedAssetId;
-    private Guid? pendingAssetSelectionId;
     private Guid? selectedAnnotationId;
     private bool isDarkMode;
     private bool isDirty;
     private bool isUpdatingUi;
+    private bool isChangingAssetSelection;
     private bool isRefreshingAssets;
     private bool isRefreshingAnnotations;
     private bool closeAlreadyConfirmed;
@@ -317,12 +317,15 @@ public partial class MainWindow : Window
     private void RemoveImageButton_Click(object sender, RoutedEventArgs e)
     {
         var selectedStep = GetSelectedStep();
-        if (selectedStep is null || StepAssetsListBox.SelectedItem is not EditableAsset selectedAsset)
+        var selectedAsset = GetSelectedEditableAsset();
+        if (selectedStep is null || selectedAsset is null)
         {
             return;
         }
 
         selectedStep.AssetIds.Remove(selectedAsset.Id);
+        selectedAssetId = selectedStep.AssetIds.Count > 0 ? selectedStep.AssetIds[0] : null;
+        selectedAnnotationId = null;
         RefreshSelectedStepAssets();
         RefreshSelectedAssetAnnotations();
         MarkDirty();
@@ -352,13 +355,14 @@ public partial class MainWindow : Window
     private void RemoveAnnotationButton_Click(object sender, RoutedEventArgs e)
     {
         var selectedStep = GetSelectedStep();
-        if (selectedStep is null || StepAssetsListBox.SelectedItem is not EditableAsset selectedAsset)
+        var selectedAsset = GetSelectedEditableAsset();
+        if (selectedStep is null || selectedAsset is null)
         {
             return;
         }
 
-        var annotation = AnnotationListBox.SelectedItem is EditableAnnotation selectedAnnotation
-            ? selectedStep.Annotations.FirstOrDefault(candidate => candidate.Id == selectedAnnotation.Id)
+        var annotation = selectedAnnotationId is { } annotationId
+            ? selectedStep.Annotations.FirstOrDefault(candidate => candidate.Id == annotationId)
             : selectedStep.Annotations.LastOrDefault(candidate => candidate.AssetId == selectedAsset.Id);
         if (annotation is null)
         {
@@ -375,7 +379,8 @@ public partial class MainWindow : Window
 
     private void InsertImageReferenceButton_Click(object sender, RoutedEventArgs e)
     {
-        if (StepAssetsListBox.SelectedItem is not EditableAsset selectedAsset)
+        var selectedAsset = GetSelectedEditableAsset();
+        if (selectedAsset is null)
         {
             return;
         }
@@ -431,6 +436,8 @@ public partial class MainWindow : Window
 
     private void StepsListBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
+        selectedAssetId = null;
+        selectedAnnotationId = null;
         LoadSelectedStepIntoEditor();
         RefreshSelectedStepAssets();
         RefreshSelectedAssetAnnotations();
@@ -441,10 +448,19 @@ public partial class MainWindow : Window
     {
         if (System.Windows.Controls.ItemsControl.ContainerFromElement(
                 StepAssetsListBox,
-                e.OriginalSource as DependencyObject) is System.Windows.Controls.ListBoxItem { DataContext: EditableAsset asset })
+                e.OriginalSource as DependencyObject) is not System.Windows.Controls.ListBoxItem { DataContext: EditableAsset asset })
         {
-            pendingAssetSelectionId = asset.Id;
+            return;
         }
+
+        if (selectedAssetId == asset.Id)
+        {
+            e.Handled = true;
+            return;
+        }
+
+        SelectAsset(asset.Id);
+        e.Handled = true;
     }
 
     private void StepAssetsListBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
@@ -458,8 +474,11 @@ public partial class MainWindow : Window
         {
             selectedAssetId = selectedAsset.Id;
         }
+        else
+        {
+            selectedAssetId = null;
+        }
 
-        pendingAssetSelectionId = null;
         selectedAnnotationId = null;
 
         RefreshSelectedAssetAnnotations();
@@ -477,6 +496,10 @@ public partial class MainWindow : Window
         {
             selectedAnnotationId = selectedAnnotation.Id;
         }
+        else
+        {
+            selectedAnnotationId = null;
+        }
 
         LoadSelectedAnnotationIntoEditor();
         UpdateUiState();
@@ -484,7 +507,7 @@ public partial class MainWindow : Window
 
     private void AnnotationTextBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
     {
-        if (isUpdatingUi || GetSelectedAnnotation() is not { } annotation)
+        if (isUpdatingUi || isChangingAssetSelection || GetSelectedAnnotation() is not { } annotation)
         {
             return;
         }
@@ -497,7 +520,7 @@ public partial class MainWindow : Window
 
     private void AnnotationBoundsSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
-        if (isUpdatingUi || GetSelectedAnnotation() is not { } annotation)
+        if (isUpdatingUi || isChangingAssetSelection || GetSelectedAnnotation() is not { } annotation)
         {
             return;
         }
@@ -656,6 +679,8 @@ public partial class MainWindow : Window
         currentProject = project;
         currentMetadata = project.Document.Metadata;
         currentAssets = [.. project.Document.Assets];
+        selectedAssetId = null;
+        selectedAnnotationId = null;
 
         GuideTitleTextBox.Text = project.Document.Metadata.Title;
         steps.Clear();
@@ -805,8 +830,8 @@ public partial class MainWindow : Window
     {
         var hasProject = currentProject is not null && currentMetadata is not null;
         var hasSelectedStep = StepsListBox.SelectedItem is EditableStep;
-        var hasSelectedAsset = StepAssetsListBox.SelectedItem is EditableAsset;
-        var hasSelectedAnnotation = AnnotationListBox.SelectedItem is EditableAnnotation;
+        var hasSelectedAsset = selectedAssetId.HasValue && GetSelectedEditableAsset() is not null;
+        var hasSelectedAnnotation = selectedAnnotationId.HasValue && GetSelectedAnnotation() is not null;
 
         SaveGuideButton.IsEnabled = hasProject;
         PreviewGuideButton.IsEnabled = hasProject;
@@ -840,18 +865,45 @@ public partial class MainWindow : Window
         return StepsListBox.SelectedItem as EditableStep;
     }
 
+    private EditableAsset? GetSelectedEditableAsset()
+    {
+        return selectedAssetId is { } assetId
+            ? selectedStepAssets.FirstOrDefault(asset => asset.Id == assetId)
+            : null;
+    }
+
+    private void SelectAsset(Guid? assetId)
+    {
+        isChangingAssetSelection = true;
+        selectedAssetId = assetId;
+        selectedAnnotationId = null;
+
+        isRefreshingAssets = true;
+        StepAssetsListBox.SelectedItem = selectedStepAssets.FirstOrDefault(asset => asset.Id == assetId);
+        isRefreshingAssets = false;
+
+        RefreshSelectedAssetAnnotations();
+        UpdateUiState();
+
+        Dispatcher.BeginInvoke(() => isChangingAssetSelection = false, DispatcherPriority.ContextIdle);
+    }
+
     private void AttachAssetToStep(EditableStep step, GuideAsset asset)
     {
         currentAssets.Add(asset);
         step.AssetIds.Add(asset.Id);
+        selectedAssetId = asset.Id;
+        selectedAnnotationId = null;
         RefreshSelectedStepAssets();
+        RefreshSelectedAssetAnnotations();
         MarkDirty();
     }
 
     private void AddAnnotationToSelectedImage(GuideAnnotationKind kind, string? text)
     {
         var selectedStep = GetSelectedStep();
-        if (selectedStep is null || StepAssetsListBox.SelectedItem is not EditableAsset selectedAsset)
+        var selectedAsset = GetSelectedEditableAsset();
+        if (selectedStep is null || selectedAsset is null)
         {
             return;
         }
@@ -888,15 +940,16 @@ public partial class MainWindow : Window
 
     private void RefreshSelectedStepAssets(Guid? preferredAssetId = null)
     {
-        var targetAssetId = pendingAssetSelectionId
-            ?? preferredAssetId
-            ?? selectedAssetId
-            ?? (StepAssetsListBox.SelectedItem as EditableAsset)?.Id;
+        var previousAssetId = selectedAssetId;
+        var targetAssetId = preferredAssetId ?? selectedAssetId;
         isRefreshingAssets = true;
         selectedStepAssets.Clear();
 
         if (currentProject is null || GetSelectedStep() is not { } selectedStep)
         {
+            selectedAssetId = null;
+            selectedAnnotationId = null;
+            StepAssetsListBox.SelectedItem = null;
             isRefreshingAssets = false;
             return;
         }
@@ -915,9 +968,15 @@ public partial class MainWindow : Window
                 selectedStep.Annotations.Where(annotation => annotation.AssetId == asset.Id)));
         }
 
-        StepAssetsListBox.SelectedItem = selectedStepAssets.FirstOrDefault(asset => asset.Id == targetAssetId)
+        var selectedAsset = selectedStepAssets.FirstOrDefault(asset => asset.Id == targetAssetId)
             ?? selectedStepAssets.FirstOrDefault();
-        selectedAssetId = (StepAssetsListBox.SelectedItem as EditableAsset)?.Id;
+        selectedAssetId = selectedAsset?.Id;
+        if (selectedAssetId != previousAssetId)
+        {
+            selectedAnnotationId = null;
+        }
+
+        StepAssetsListBox.SelectedItem = selectedAsset;
         isRefreshingAssets = false;
     }
 
@@ -927,8 +986,10 @@ public partial class MainWindow : Window
         isRefreshingAnnotations = true;
         selectedAssetAnnotations.Clear();
 
-        if (GetSelectedStep() is not { } selectedStep || StepAssetsListBox.SelectedItem is not EditableAsset selectedAsset)
+        if (GetSelectedStep() is not { } selectedStep || selectedAssetId is not { } assetId)
         {
+            selectedAnnotationId = null;
+            AnnotationListBox.SelectedItem = null;
             isRefreshingAnnotations = false;
             if (reloadEditor)
             {
@@ -938,13 +999,15 @@ public partial class MainWindow : Window
             return;
         }
 
-        foreach (var annotation in selectedStep.Annotations.Where(annotation => annotation.AssetId == selectedAsset.Id))
+        foreach (var annotation in selectedStep.Annotations.Where(annotation => annotation.AssetId == assetId))
         {
             selectedAssetAnnotations.Add(EditableAnnotation.FromGuideAnnotation(annotation));
         }
 
-        AnnotationListBox.SelectedItem = selectedAssetAnnotations.FirstOrDefault(annotation => annotation.Id == targetAnnotationId)
+        var selectedAnnotation = selectedAssetAnnotations.FirstOrDefault(annotation => annotation.Id == targetAnnotationId)
             ?? selectedAssetAnnotations.FirstOrDefault();
+        selectedAnnotationId = selectedAnnotation?.Id;
+        AnnotationListBox.SelectedItem = selectedAnnotation;
         isRefreshingAnnotations = false;
         if (reloadEditor)
         {
@@ -954,12 +1017,12 @@ public partial class MainWindow : Window
 
     private GuideAnnotation? GetSelectedAnnotation()
     {
-        if (GetSelectedStep() is not { } selectedStep || AnnotationListBox.SelectedItem is not EditableAnnotation selectedAnnotation)
+        if (GetSelectedStep() is not { } selectedStep || selectedAnnotationId is not { } annotationId)
         {
             return null;
         }
 
-        return selectedStep.Annotations.FirstOrDefault(annotation => annotation.Id == selectedAnnotation.Id);
+        return selectedStep.Annotations.FirstOrDefault(annotation => annotation.Id == annotationId);
     }
 
     private void UpdateSelectedAnnotation(GuideAnnotation updatedAnnotation, bool reloadEditor = true, bool refreshAssets = true)
@@ -978,8 +1041,7 @@ public partial class MainWindow : Window
 
         selectedStep.Annotations[index] = updatedAnnotation;
         selectedAnnotationId = updatedAnnotation.Id;
-        var currentOrPendingAssetId = pendingAssetSelectionId ?? (StepAssetsListBox.SelectedItem as EditableAsset)?.Id;
-        if (refreshAssets && currentOrPendingAssetId == updatedAnnotation.AssetId)
+        if (refreshAssets && selectedAssetId == updatedAnnotation.AssetId)
         {
             RefreshSelectedStepAssets(updatedAnnotation.AssetId);
         }
@@ -1004,6 +1066,12 @@ public partial class MainWindow : Window
 
         selectedStep.Annotations[index] = updatedAnnotation;
         selectedAnnotationId = updatedAnnotation.Id;
+        if (selectedAssetId == updatedAnnotation.AssetId)
+        {
+            RefreshSelectedStepAssets(updatedAnnotation.AssetId);
+            RefreshSelectedAssetAnnotations(updatedAnnotation.Id, reloadEditor: false);
+        }
+
         isDirty = true;
         ScheduleGuidePreviewRefresh();
         UpdateUiState();

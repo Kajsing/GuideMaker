@@ -341,9 +341,19 @@
                              Grid.Row="5"
                              PreviewMouseLeftButtonDown="StepAssetsListBox_PreviewMouseLeftButtonDown"
                              SelectionChanged="StepAssetsListBox_SelectionChanged">
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="Height" Value="82" />
+                                <Setter Property="Padding" Value="0" />
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                <Setter Property="VerticalContentAlignment" Value="Stretch" />
+                            </Style>
+                        </ListBox.ItemContainerStyle>
                         <ListBox.ItemTemplate>
                             <DataTemplate>
-                                <Grid Margin="4,6">
+                                <Grid Margin="4,6"
+                                      Height="70"
+                                      Background="Transparent">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="112" />
                                         <ColumnDefinition Width="*" />
