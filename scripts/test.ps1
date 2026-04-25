@@ -9,7 +9,7 @@ if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
     Write-Error ".NET SDK was not found on PATH. Install .NET 8 SDK or add dotnet.exe to PATH, then rerun this script."
 }
 
-dotnet test .\GuideMaker.sln
+dotnet test .\GuideMaker.sln --configuration Debug
 if ($LASTEXITCODE -ne 0) {
     throw "dotnet test failed with exit code $LASTEXITCODE."
 }

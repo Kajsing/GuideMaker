@@ -103,7 +103,38 @@ public static class GuideProjectValidator
                     errors.Add($"Step '{step.Id}' references unknown asset '{assetId}'.");
                 }
             }
+
+            foreach (var annotation in step.Annotations)
+            {
+                if (!assetIds.Contains(annotation.AssetId))
+                {
+                    errors.Add($"Annotation '{annotation.Id}' references unknown asset '{annotation.AssetId}'.");
+                }
+
+                ValidateBounds(annotation, errors);
+            }
         }
+    }
+
+    private static void ValidateBounds(GuideAnnotation annotation, List<string> errors)
+    {
+        var bounds = annotation.Bounds;
+        if (!IsNormalized(bounds.X) ||
+            !IsNormalized(bounds.Y) ||
+            !IsNormalized(bounds.Width) ||
+            !IsNormalized(bounds.Height) ||
+            bounds.Width <= 0 ||
+            bounds.Height <= 0 ||
+            bounds.X + bounds.Width > 1 ||
+            bounds.Y + bounds.Height > 1)
+        {
+            errors.Add($"Annotation '{annotation.Id}' must have normalized bounds within the image.");
+        }
+    }
+
+    private static bool IsNormalized(double value)
+    {
+        return value is >= 0 and <= 1;
     }
 
     private static bool IsSafeAssetPath(string projectDirectory, string relativePath)

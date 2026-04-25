@@ -291,52 +291,68 @@
                                  TextChanged="StepBodyTextBox_TextChanged" />
                     </Grid>
 
-                    <Grid Grid.Row="4"
-                          Margin="0,18,0,8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
+                    <DockPanel Grid.Row="4"
+                               Margin="0,18,0,8">
                         <TextBlock Text="Images"
                                    FontSize="13"
                                    FontWeight="SemiBold"
+                                   DockPanel.Dock="Top"
+                                   Margin="0,0,0,8"
                                    VerticalAlignment="Center"
                                    Foreground="{DynamicResource PrimaryBrush}" />
-                        <Button Grid.Column="1"
-                                x:Name="ImportImageButton"
+                        <WrapPanel>
+                            <Button x:Name="ImportImageButton"
                                 Content="Import"
                                 MinWidth="78"
-                                Margin="8,0,0,0"
+                                Margin="0,0,8,8"
                                 Click="ImportImageButton_Click" />
-                        <Button Grid.Column="2"
-                                x:Name="PasteImageButton"
+                            <Button x:Name="PasteImageButton"
                                 Content="Paste"
                                 MinWidth="78"
-                                Margin="8,0,0,0"
+                                Margin="0,0,8,8"
                                 Click="PasteImageButton_Click" />
-                        <Button Grid.Column="3"
-                                x:Name="CaptureScreenshotButton"
+                            <Button x:Name="CaptureScreenshotButton"
                                 Content="Capture"
                                 MinWidth="88"
-                                Margin="8,0,0,0"
+                                Margin="0,0,8,8"
                                 Click="CaptureScreenshotButton_Click" />
-                        <Button Grid.Column="4"
-                                x:Name="InsertImageReferenceButton"
+                            <Button x:Name="InsertImageReferenceButton"
                                 Content="Insert ref"
                                 MinWidth="96"
-                                Margin="8,0,0,0"
+                                Margin="0,0,8,8"
                                 Click="InsertImageReferenceButton_Click" />
-                        <Button Grid.Column="5"
-                                x:Name="RemoveImageButton"
+                            <Button x:Name="RemoveImageButton"
                                 Content="Remove"
                                 MinWidth="88"
-                                Margin="8,0,0,0"
+                                Margin="0,0,8,8"
                                 Click="RemoveImageButton_Click" />
-                    </Grid>
+                            <Button x:Name="AddHighlightButton"
+                                Content="Highlight"
+                                MinWidth="88"
+                                Margin="0,0,8,8"
+                                Click="AddHighlightButton_Click" />
+                            <Button x:Name="AddLabelButton"
+                                Content="Label"
+                                MinWidth="72"
+                                Margin="0,0,8,8"
+                                Click="AddLabelButton_Click" />
+                            <Button x:Name="AddArrowButton"
+                                Content="Arrow"
+                                MinWidth="72"
+                                Margin="0,0,8,8"
+                                Click="AddArrowButton_Click" />
+                            <Button x:Name="AddRedactButton"
+                                Content="Redact"
+                                MinWidth="78"
+                                Margin="0,0,8,8"
+                                Click="AddRedactButton_Click" />
+                            <Button x:Name="RemoveAnnotationButton"
+                                Content="Remove mark"
+                                MinWidth="104"
+                                Margin="0,0,8,8"
+                                Click="RemoveAnnotationButton_Click" />
+                        </WrapPanel>
+                    </DockPanel>
 
                     <ListBox x:Name="StepAssetsListBox"
                              Grid.Row="5"
@@ -354,8 +370,40 @@
                                             CornerRadius="6"
                                             Width="96"
                                             Height="64">
-                                        <Image Source="{Binding FullPath}"
-                                               Stretch="Uniform" />
+                                        <Grid ClipToBounds="True">
+                                            <Image Source="{Binding FullPath}"
+                                                   Stretch="UniformToFill" />
+                                            <ItemsControl ItemsSource="{Binding Annotations}">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <Canvas Width="96"
+                                                                Height="64" />
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemContainerStyle>
+                                                    <Style TargetType="ContentPresenter">
+                                                        <Setter Property="Canvas.Left" Value="{Binding X}" />
+                                                        <Setter Property="Canvas.Top" Value="{Binding Y}" />
+                                                    </Style>
+                                                </ItemsControl.ItemContainerStyle>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Border Width="{Binding Width}"
+                                                                Height="{Binding Height}"
+                                                                BorderBrush="{Binding BorderBrush}"
+                                                                BorderThickness="{Binding BorderThickness}"
+                                                                Background="{Binding Background}">
+                                                            <TextBlock Text="{Binding Text}"
+                                                                       Foreground="#FFFFFF"
+                                                                       FontSize="10"
+                                                                       FontWeight="SemiBold"
+                                                                       Margin="3,1"
+                                                                       TextTrimming="CharacterEllipsis" />
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </Grid>
                                     </Border>
                                     <StackPanel Grid.Column="1"
                                                 Margin="10,0,0,0"
@@ -364,6 +412,10 @@
                                                    FontWeight="SemiBold"
                                                    Foreground="{DynamicResource TextBrush}" />
                                         <TextBlock Text="{Binding RelativePath}"
+                                                   Margin="0,3,0,0"
+                                                   Foreground="{DynamicResource MutedTextBrush}"
+                                                   TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding AnnotationSummary}"
                                                    Margin="0,3,0,0"
                                                    Foreground="{DynamicResource MutedTextBrush}"
                                                    TextTrimming="CharacterEllipsis" />

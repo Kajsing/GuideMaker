@@ -64,6 +64,71 @@ public sealed class HtmlGuideExporterTests
         Assert.Equal(1, CountOccurrences(html, "<img src=\"../assets/open-app.png\""));
     }
 
+    [Fact]
+    public void Export_RendersAnnotationsAsImageOverlays()
+    {
+        var assetId = Guid.NewGuid();
+        var document = GuideDocument.Create("App guide", "Codex") with
+        {
+            Steps =
+            [
+                GuideStep.Create(1, "Open app") with
+                {
+                    AssetIds = [assetId],
+                    Annotations =
+                    [
+                        new GuideAnnotation
+                        {
+                            Id = Guid.NewGuid(),
+                            Kind = GuideAnnotationKind.Rectangle,
+                            AssetId = assetId,
+                            Bounds = new AnnotationBounds
+                            {
+                                X = 0.1,
+                                Y = 0.2,
+                                Width = 0.3,
+                                Height = 0.4
+                            }
+                        },
+                        new GuideAnnotation
+                        {
+                            Id = Guid.NewGuid(),
+                            Kind = GuideAnnotationKind.Label,
+                            AssetId = assetId,
+                            Text = "Click here",
+                            Bounds = new AnnotationBounds
+                            {
+                                X = 0.5,
+                                Y = 0.1,
+                                Width = 0.2,
+                                Height = 0.1
+                            }
+                        }
+                    ]
+                }
+            ],
+            Assets =
+            [
+                new GuideAsset
+                {
+                    Id = assetId,
+                    RelativePath = "assets/open-app.png",
+                    Kind = GuideAssetKind.Screenshot,
+                    Caption = "Application start screen",
+                    CapturedAt = DateTimeOffset.UtcNow
+                }
+            ]
+        };
+
+        var html = new HtmlGuideExporter().Export(document, "../");
+
+        Assert.Contains("class=\"guide-image-frame\"", html);
+        Assert.Contains("guide-annotation-rectangle", html);
+        Assert.Contains("left:10%;top:20%;width:30%;height:40%;", html);
+        Assert.Contains("guide-annotation-label", html);
+        Assert.Contains("Click here", html);
+    }
+
     private static int CountOccurrences(string value, string search)
     {
         var count = 0;

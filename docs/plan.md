@@ -2,9 +2,9 @@
 
 ## Current State
 
-Current milestone: Milestone 6 - Basic Annotation.
+Current milestone: Milestone 7 - PDF Export And Preview.
 
-Status: Milestone 5 is complete. The UI can import image files, paste clipboard images, capture screenshots, attach them to selected steps, and save/reload image references.
+Status: Milestone 6 is complete. Basic annotations can be saved, previewed as UI overlays, and exported as HTML overlays.
 
 ## Milestone 0 - Research And Decisions
 
@@ -105,7 +105,7 @@ Acceptance:
 
 ## Milestone 6 - Basic Annotation
 
-Status: ready.
+Status: complete.
 
 Scope:
 
@@ -121,6 +121,8 @@ Acceptance:
 - annotated screenshots can be previewed or exported.
 
 ## Milestone 7 - PDF Export And Preview
+
+Status: ready.
 
 Scope:
 

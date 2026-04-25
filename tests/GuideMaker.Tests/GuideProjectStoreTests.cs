@@ -231,6 +231,57 @@ public sealed class GuideProjectStoreTests
     }
 
     [Fact]
+    public async Task CreateAsync_WhenAnnotationBoundsAreOutsideImage_ThrowsValidationException()
+    {
+        var projectDirectory = Path.Combine(Path.GetTempPath(), "GuideMaker.Tests", Guid.NewGuid().ToString("N"));
+        var assetId = Guid.NewGuid();
+        var document = GuideDocument.Create("Printer setup", "Codex") with
+        {
+            Steps =
+            [
+                GuideStep.Create(1, "Open settings") with
+                {
+                    AssetIds = [assetId],
+                    Annotations =
+                    [
+                        new GuideAnnotation
+                        {
+                            Id = Guid.NewGuid(),
+                            Kind = GuideAnnotationKind.Rectangle,
+                            AssetId = assetId,
+                            Bounds = new AnnotationBounds
+                            {
+                                X = 0.8,
+                                Y = 0.8,
+                                Width = 0.4,
+                                Height = 0.4
+                            }
+                        }
+                    ]
+                }
+            ],
+            Assets =
+            [
+                new GuideAsset
+                {
+                    Id = assetId,
+                    RelativePath = "assets/open-settings.png",
+                    Kind = GuideAssetKind.Screenshot,
+                    CapturedAt = DateTimeOffset.UtcNow
+                }
+            ]
+        };
+
+        var store = new GuideProjectStore();
+
+        var exception = await Assert.ThrowsAsync<GuideProjectValidationException>(
+            () => store.CreateAsync(projectDirectory, document));
+
+        Assert.Contains(exception.Errors, error => error.Contains("normalized bounds", StringComparison.Ordinal));
+        Assert.False(Directory.Exists(projectDirectory));
+    }
+
+    [Fact]
     public async Task LoadAsync_WhenAssetFileIsMissing_ReportsMissingAssetPath()
     {
         var projectDirectory = Path.Combine(Path.GetTempPath(), "GuideMaker.Tests", Guid.NewGuid().ToString("N"));

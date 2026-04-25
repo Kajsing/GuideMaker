@@ -4,9 +4,9 @@
 
 Phase: Implementation
 
-Current milestone: Milestone 6 - Basic annotation
+Current milestone: Milestone 7 - PDF export and preview
 
-Status: Milestone 5 image and screenshot capture is complete. Next step is basic annotation.
+Status: Milestone 6 basic annotation is complete. Next step is PDF export and preview.
 
 ## Decision Log
 
@@ -31,6 +31,8 @@ Status: Milestone 5 image and screenshot capture is complete. Next step is basic
 | 2026-04-25 | Export image paths and body image references fixed | Exported files live in `exports/` and need correct relative links | HTML/Markdown use `../assets/...`; `[[image:...]]` can place images inside step text |
 | 2026-04-25 | Multi-image import added | Users may collect several screenshots before attaching them | Import dialog can attach multiple selected files to the current step |
 | 2026-04-25 | Image display sizing deferred to annotation/export work | Size needs per-step image reference metadata, not only asset metadata | Revisit during Milestone 6 or 7 before final export polish |
+| 2026-04-25 | Basic annotations added | Supports practical marking without a full image editor | Highlight, label, arrow, and redaction annotations are saved and exported as HTML overlays |
+| 2026-04-25 | Validation tests run in Debug while app builds in Release | Release test assembly is blocked by local Windows Application Control policy | `validate.ps1` still builds Release, then runs Debug tests |
 
 ## Open Blockers
 
@@ -48,8 +50,8 @@ Status: Milestone 5 image and screenshot capture is complete. Next step is basic
 | 3 Markdown and HTML export | Complete | Validation passes with 14 tests |
 | 4 Basic UI shell | Complete | Create/open/edit/save/reopen loop wired |
 | 5 Images and screenshot capture | Complete | Import, paste, capture, attach, and preview wired |
-| 6 Basic annotation | Ready | MVP scope |
-| 7 PDF export and preview | Not started | PDF package decision needed |
+| 6 Basic annotation | Complete | Highlight, label, arrow, redaction overlays wired |
+| 7 PDF export and preview | Ready | PDF package decision needed |
 | 8 MVP hardening | Not started | Final polish |
 
 ## Validation Log
@@ -73,6 +75,7 @@ Status: Milestone 5 image and screenshot capture is complete. Next step is basic
 | 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Image storage/UI capture build; 17 tests passed |
 | 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Export image path/reference fix; 19 tests passed |
 | 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Multi-image import build; 19 tests passed |
+| 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Release build and Debug tests passed; 21 tests passed |
 
 ## Known Risks
 
@@ -87,7 +90,7 @@ Status: Milestone 5 image and screenshot capture is complete. Next step is basic
 
 ## Next Recommended Step
 
-Start Milestone 6: add basic annotation tools for rectangles/highlights, arrows, labels, and optional blur/redaction.
+Start Milestone 7: choose a free/local PDF export approach, add preview, and export Markdown, HTML, and PDF from the UI with a sensitive-content warning.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1

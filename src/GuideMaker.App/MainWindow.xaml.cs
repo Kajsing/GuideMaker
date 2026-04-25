@@ -290,6 +290,46 @@ public partial class MainWindow : Window
         SetStatus("Image detached from selected step.");
     }
 
+    private void AddHighlightButton_Click(object sender, RoutedEventArgs e)
+    {
+        AddAnnotationToSelectedImage(GuideAnnotationKind.Rectangle, "Highlight");
+    }
+
+    private void AddLabelButton_Click(object sender, RoutedEventArgs e)
+    {
+        AddAnnotationToSelectedImage(GuideAnnotationKind.Label, "Label");
+    }
+
+    private void AddArrowButton_Click(object sender, RoutedEventArgs e)
+    {
+        AddAnnotationToSelectedImage(GuideAnnotationKind.Arrow, null);
+    }
+
+    private void AddRedactButton_Click(object sender, RoutedEventArgs e)
+    {
+        AddAnnotationToSelectedImage(GuideAnnotationKind.Blur, null);
+    }
+
+    private void RemoveAnnotationButton_Click(object sender, RoutedEventArgs e)
+    {
+        var selectedStep = GetSelectedStep();
+        if (selectedStep is null || StepAssetsListBox.SelectedItem is not EditableAsset selectedAsset)
+        {
+            return;
+        }
+
+        var annotation = selectedStep.Annotations.LastOrDefault(candidate => candidate.AssetId == selectedAsset.Id);
+        if (annotation is null)
+        {
+            return;
+        }
+
+        selectedStep.Annotations.Remove(annotation);
+        RefreshSelectedStepAssets();
+        MarkDirty();
+        SetStatus("Annotation removed from selected image.");
+    }
+
     private void InsertImageReferenceButton_Click(object sender, RoutedEventArgs e)
     {
         if (StepAssetsListBox.SelectedItem is not EditableAsset selectedAsset)
@@ -559,6 +599,11 @@ public partial class MainWindow : Window
         CaptureScreenshotButton.IsEnabled = isEnabled;
         InsertImageReferenceButton.IsEnabled = isEnabled;
         RemoveImageButton.IsEnabled = isEnabled;
+        AddHighlightButton.IsEnabled = isEnabled;
+        AddLabelButton.IsEnabled = isEnabled;
+        AddArrowButton.IsEnabled = isEnabled;
+        AddRedactButton.IsEnabled = isEnabled;
+        RemoveAnnotationButton.IsEnabled = isEnabled;
     }
 
     private void UpdateUiState()
@@ -576,6 +621,11 @@ public partial class MainWindow : Window
         CaptureScreenshotButton.IsEnabled = hasProject && hasSelectedStep;
         InsertImageReferenceButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset;
         RemoveImageButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset;
+        AddHighlightButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset;
+        AddLabelButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset;
+        AddArrowButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset;
+        AddRedactButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset;
+        RemoveAnnotationButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset;
         GuideTitleTextBox.IsEnabled = hasProject;
         StepTitleTextBox.IsEnabled = hasSelectedStep;
         StepBodyTextBox.IsEnabled = hasSelectedStep;
@@ -595,6 +645,40 @@ public partial class MainWindow : Window
         MarkDirty();
     }
 
+    private void AddAnnotationToSelectedImage(GuideAnnotationKind kind, string? text)
+    {
+        var selectedStep = GetSelectedStep();
+        if (selectedStep is null || StepAssetsListBox.SelectedItem is not EditableAsset selectedAsset)
+        {
+            return;
+        }
+
+        selectedStep.Annotations.Add(new GuideAnnotation
+        {
+            Id = Guid.NewGuid(),
+            Kind = kind,
+            AssetId = selectedAsset.Id,
+            Text = text,
+            Bounds = CreateDefaultBounds(kind, selectedStep.Annotations.Count(annotation => annotation.AssetId == selectedAsset.Id))
+        });
+
+        RefreshSelectedStepAssets();
+        MarkDirty();
+        SetStatus($"{kind} annotation added to selected image.");
+    }
+
+    private static AnnotationBounds CreateDefaultBounds(GuideAnnotationKind kind, int existingAnnotationCount)
+    {
+        var offset = Math.Min(existingAnnotationCount * 0.05, 0.25);
+        return kind switch
+        {
+            GuideAnnotationKind.Label => new AnnotationBounds { X = 0.08 + offset, Y = 0.08 + offset, Width = 0.24, Height = 0.1 },
+            GuideAnnotationKind.Arrow => new AnnotationBounds { X = 0.12 + offset, Y = 0.45, Width = 0.35, Height = 0.04 },
+            GuideAnnotationKind.Blur => new AnnotationBounds { X = 0.18 + offset, Y = 0.18 + offset, Width = 0.28, Height = 0.18 },
+            _ => new AnnotationBounds { X = 0.12 + offset, Y = 0.12 + offset, Width = 0.32, Height = 0.22 }
+        };
+    }
+
     private void RefreshSelectedStepAssets()
     {
         selectedStepAssets.Clear();
@@ -612,7 +696,10 @@ public partial class MainWindow : Window
                 continue;
             }
 
-            selectedStepAssets.Add(EditableAsset.FromGuideAsset(currentProject.ProjectDirectory, asset));
+            selectedStepAssets.Add(EditableAsset.FromGuideAsset(
+                currentProject.ProjectDirectory,
+                asset,
+                selectedStep.Annotations.Where(annotation => annotation.AssetId == asset.Id)));
         }
     }
 
@@ -764,14 +851,72 @@ public partial class MainWindow : Window
 
         public required string FullPath { get; init; }
 
-        public static EditableAsset FromGuideAsset(string projectDirectory, GuideAsset asset)
+        public required string AnnotationSummary { get; init; }
+
+        public required IReadOnlyList<EditableAnnotationPreview> Annotations { get; init; }
+
+        public static EditableAsset FromGuideAsset(string projectDirectory, GuideAsset asset, IEnumerable<GuideAnnotation> annotations)
         {
+            var annotationList = annotations.ToArray();
             return new EditableAsset
             {
                 Id = asset.Id,
                 Caption = string.IsNullOrWhiteSpace(asset.Caption) ? Path.GetFileName(asset.RelativePath) : asset.Caption,
                 RelativePath = asset.RelativePath,
-                FullPath = Path.Combine(projectDirectory, asset.RelativePath.Replace('/', Path.DirectorySeparatorChar))
+                FullPath = Path.Combine(projectDirectory, asset.RelativePath.Replace('/', Path.DirectorySeparatorChar)),
+                AnnotationSummary = annotationList.Length == 0 ? "No annotations" : $"{annotationList.Length} annotation(s)",
+                Annotations = annotationList.Select(EditableAnnotationPreview.FromGuideAnnotation).ToArray()
+            };
+        }
+    }
+
+    public sealed record EditableAnnotationPreview
+    {
+        public required double X { get; init; }
+
+        public required double Y { get; init; }
+
+        public required double Width { get; init; }
+
+        public required double Height { get; init; }
+
+        public required System.Windows.Media.Brush BorderBrush { get; init; }
+
+        public required System.Windows.Media.Brush Background { get; init; }
+
+        public required Thickness BorderThickness { get; init; }
+
+        public string? Text { get; init; }
+
+        public static EditableAnnotationPreview FromGuideAnnotation(GuideAnnotation annotation)
+        {
+            return new EditableAnnotationPreview
+            {
+                X = annotation.Bounds.X * 96,
+                Y = annotation.Bounds.Y * 64,
+                Width = annotation.Bounds.Width * 96,
+                Height = annotation.Bounds.Height * 64,
+                BorderBrush = annotation.Kind switch
+                {
+                    GuideAnnotationKind.Arrow => System.Windows.Media.Brushes.Red,
+                    GuideAnnotationKind.Label => System.Windows.Media.Brushes.DodgerBlue,
+                    GuideAnnotationKind.Blur => System.Windows.Media.Brushes.Black,
+                    _ => System.Windows.Media.Brushes.Gold
+                },
+                Background = annotation.Kind switch
+                {
+                    GuideAnnotationKind.Label => new SolidColorBrush(System.Windows.Media.Color.FromArgb(230, 26, 115, 232)),
+                    GuideAnnotationKind.Blur => new SolidColorBrush(System.Windows.Media.Color.FromArgb(190, 32, 33, 36)),
+                    GuideAnnotationKind.Arrow => System.Windows.Media.Brushes.Red,
+                    _ => new SolidColorBrush(System.Windows.Media.Color.FromArgb(45, 251, 188, 4))
+                },
+                BorderThickness = annotation.Kind switch
+                {
+                    GuideAnnotationKind.Arrow => new Thickness(0, 2, 0, 0),
+                    GuideAnnotationKind.Blur => new Thickness(0),
+                    _ => new Thickness(2)
+                },
+                Text = annotation.Kind == GuideAnnotationKind.Label ? annotation.Text : null
             };
         }
     }
