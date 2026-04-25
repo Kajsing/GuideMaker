@@ -142,6 +142,10 @@ Status: in progress.
 Scope:
 
 - polish primary workflow
+- introduce image pool plus per-step image references as the foundation for follow-along capture and crop
+- keep `assetIds` and step-level `annotations` migration-compatible while the UI moves to `StepImageRef`
+- build follow-along capture on top of the image pool
+- add crop workflow that preserves original images and renders cropped export assets
 - add a usable annotation editor: select, move, resize, and edit label text
 - add annotation rotate controls
 - review annotation percentage/slider behavior and direct manipulation
@@ -156,5 +160,21 @@ Scope:
 Acceptance:
 
 - end-to-end guide creation works locally.
+- images can be kept in a reusable pool and attached to steps without destroying originals.
+- exported Markdown, HTML, and PDF use generated images with crop and annotations applied.
 - validation scripts pass.
 - known limitations are documented.
+
+## Milestone 8 Image Pool Plan
+
+Status: planned.
+
+Implementation order:
+
+1. Add migration-compatible core model types: `StepImageRef` and optional crop bounds.
+2. Update storage validation and tests so old `assetIds`/step annotations and new `imageRefs` can coexist safely.
+3. Update export rendering to prefer `imageRefs`, applying crop and annotations per step image reference.
+4. Refactor app state to show an image pool and selected-step images separately.
+5. Change import, paste, and capture so images enter the pool first, then attach to the selected step.
+6. Add a crop editor that stores crop on the step image reference and preserves original pool images.
+7. Build Follow Along Capture on top of the pool: start capture mode, collect screenshots into the pool, attach to the active step, and stop when GuideMaker is restored.
