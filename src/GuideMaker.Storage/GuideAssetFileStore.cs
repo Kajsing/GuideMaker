@@ -66,6 +66,61 @@ public sealed class GuideAssetFileStore
         return CreateAsset(project.ProjectDirectory, destinationPath, baseFileName, GuideAssetKind.Screenshot);
     }
 
+    public IReadOnlyList<GuideAsset> ScanUnregisteredImages(GuideProject project)
+    {
+        ArgumentNullException.ThrowIfNull(project);
+
+        if (!Directory.Exists(project.AssetsDirectory))
+        {
+            return [];
+        }
+
+        var registeredPaths = project.Document.Assets
+            .Select(asset => NormalizeRelativePath(asset.RelativePath))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var discoveredAssets = new List<GuideAsset>();
+
+        foreach (var filePath in Directory.EnumerateFiles(project.AssetsDirectory, "*", SearchOption.AllDirectories)
+                     .OrderBy(filePath => filePath, StringComparer.OrdinalIgnoreCase))
+        {
+            if (!SupportedImageExtensions.Contains(Path.GetExtension(filePath)))
+            {
+                continue;
+            }
+
+            var relativePath = NormalizeRelativePath(Path.GetRelativePath(project.ProjectDirectory, filePath));
+            if (registeredPaths.Contains(relativePath))
+            {
+                continue;
+            }
+
+            discoveredAssets.Add(new GuideAsset
+            {
+                Id = Guid.NewGuid(),
+                RelativePath = relativePath,
+                Kind = GuideAssetKind.ImportedImage,
+                Caption = Path.GetFileNameWithoutExtension(filePath),
+                AltText = Path.GetFileNameWithoutExtension(filePath),
+                CapturedAt = File.GetCreationTimeUtc(filePath)
+            });
+        }
+
+        return discoveredAssets;
+    }
+
+    public IReadOnlyList<string> FindMissingRegisteredImages(GuideProject project)
+    {
+        ArgumentNullException.ThrowIfNull(project);
+
+        return project.Document.Assets
+            .Select(asset => NormalizeRelativePath(asset.RelativePath))
+            .Where(relativePath => !File.Exists(Path.Combine(
+                project.ProjectDirectory,
+                relativePath.Replace('/', Path.DirectorySeparatorChar))))
+            .OrderBy(relativePath => relativePath, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
     private static GuideAsset CreateAsset(string projectDirectory, string assetFilePath, string caption, GuideAssetKind kind)
     {
         return new GuideAsset
@@ -77,6 +132,11 @@ public sealed class GuideAssetFileStore
             AltText = caption,
             CapturedAt = DateTimeOffset.UtcNow
         };
+    }
+
+    private static string NormalizeRelativePath(string relativePath)
+    {
+        return relativePath.Replace('\\', '/');
     }
 
     private static string CreateUniqueAssetPath(string projectDirectory, string baseFileName, string extension)

@@ -100,6 +100,82 @@ public sealed class GuideProjectStoreTests
     }
 
     [Fact]
+    public async Task ScanUnregisteredImages_WhenAssetsFolderHasOrphanImages_ReturnsOnlyUnregisteredImages()
+    {
+        var projectDirectory = Path.Combine(Path.GetTempPath(), "GuideMaker.Tests", Guid.NewGuid().ToString("N"));
+
+        try
+        {
+            var registeredAsset = new GuideAsset
+            {
+                Id = Guid.NewGuid(),
+                RelativePath = "assets/registered.png",
+                Kind = GuideAssetKind.ImportedImage,
+                Caption = "Registered",
+                CapturedAt = DateTimeOffset.UtcNow
+            };
+            var store = new GuideProjectStore();
+            var project = await store.CreateAsync(projectDirectory, GuideDocument.Create("Printer setup", "Codex") with
+            {
+                Assets = [registeredAsset]
+            });
+            var assetsDirectory = Path.Combine(projectDirectory, GuideProjectLayout.AssetsDirectoryName);
+            await File.WriteAllBytesAsync(Path.Combine(assetsDirectory, "registered.png"), [1, 2, 3]);
+            await File.WriteAllBytesAsync(Path.Combine(assetsDirectory, "orphan.png"), [4, 5, 6]);
+            await File.WriteAllTextAsync(Path.Combine(assetsDirectory, "notes.txt"), "not an image");
+
+            var discoveredAssets = new GuideAssetFileStore().ScanUnregisteredImages(project);
+
+            var discoveredAsset = Assert.Single(discoveredAssets);
+            Assert.Equal("assets/orphan.png", discoveredAsset.RelativePath);
+            Assert.Equal(GuideAssetKind.ImportedImage, discoveredAsset.Kind);
+            Assert.Equal("orphan", discoveredAsset.Caption);
+        }
+        finally
+        {
+            if (Directory.Exists(projectDirectory))
+            {
+                Directory.Delete(projectDirectory, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task FindMissingRegisteredImages_WhenRegisteredAssetFileIsMissing_ReturnsRelativePath()
+    {
+        var projectDirectory = Path.Combine(Path.GetTempPath(), "GuideMaker.Tests", Guid.NewGuid().ToString("N"));
+
+        try
+        {
+            var missingAsset = new GuideAsset
+            {
+                Id = Guid.NewGuid(),
+                RelativePath = "assets/missing.png",
+                Kind = GuideAssetKind.ImportedImage,
+                Caption = "Missing",
+                CapturedAt = DateTimeOffset.UtcNow
+            };
+            var store = new GuideProjectStore();
+            var project = await store.CreateAsync(projectDirectory, GuideDocument.Create("Printer setup", "Codex") with
+            {
+                Assets = [missingAsset]
+            });
+
+            var missingPaths = new GuideAssetFileStore().FindMissingRegisteredImages(project);
+
+            var missingPath = Assert.Single(missingPaths);
+            Assert.Equal("assets/missing.png", missingPath);
+        }
+        finally
+        {
+            if (Directory.Exists(projectDirectory))
+            {
+                Directory.Delete(projectDirectory, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public async Task LoadAsync_WhenAssetPathLeavesProject_ThrowsValidationException()
     {
         var projectDirectory = Path.Combine(Path.GetTempPath(), "GuideMaker.Tests", Guid.NewGuid().ToString("N"));

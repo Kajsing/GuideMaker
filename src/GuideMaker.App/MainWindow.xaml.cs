@@ -472,6 +472,11 @@ public partial class MainWindow : Window
 
     private void RemoveImageButton_Click(object sender, RoutedEventArgs e)
     {
+        if (IsPoolTabActive())
+        {
+            return;
+        }
+
         var selectedStep = GetSelectedStep();
         var selectedAsset = GetSelectedEditableAsset();
         if (selectedStep is null || selectedAsset is null)
@@ -511,6 +516,39 @@ public partial class MainWindow : Window
 
         AttachAssetToStep(selectedStep, asset);
         SetStatus("Pool image attached to selected step.");
+    }
+
+    private void ScanAssetPoolButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (currentProject is null || currentMetadata is null)
+        {
+            return;
+        }
+
+        var projectSnapshot = currentProject with
+        {
+            Document = BuildDocumentFromUi()
+        };
+        var missingAssetPaths = assetFileStore.FindMissingRegisteredImages(projectSnapshot);
+        var discoveredAssets = assetFileStore.ScanUnregisteredImages(projectSnapshot);
+        if (discoveredAssets.Count == 0)
+        {
+            SetStatus(missingAssetPaths.Count == 0
+                ? "No unregistered image files found in assets."
+                : $"No unregistered image files found. Missing registered assets: {missingAssetPaths.Count}.");
+            return;
+        }
+
+        currentAssets.AddRange(discoveredAssets);
+        RefreshImagePoolAssets(discoveredAssets[0].Id);
+        RefreshSelectedStepAssets();
+        MarkDirty();
+        var registeredMessage = discoveredAssets.Count == 1
+            ? "1 image file registered in the pool."
+            : $"{discoveredAssets.Count} image files registered in the pool.";
+        SetStatus(missingAssetPaths.Count == 0
+            ? registeredMessage
+            : $"{registeredMessage} Missing registered assets: {missingAssetPaths.Count}.");
     }
 
     private void AddHighlightButton_Click(object sender, RoutedEventArgs e)
@@ -570,6 +608,11 @@ public partial class MainWindow : Window
 
     private void InsertImageReferenceButton_Click(object sender, RoutedEventArgs e)
     {
+        if (IsPoolTabActive())
+        {
+            return;
+        }
+
         var selectedAsset = GetSelectedEditableAsset();
         if (selectedAsset is null)
         {
@@ -699,13 +742,15 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (StepImagesTabControl.SelectedItem == PoolImagesTab)
+        if (IsPoolTabActive())
         {
             RefreshWorkspaceImagePreview(ImagePoolListBox.SelectedItem as EditableAsset);
+            UpdateUiState();
             return;
         }
 
         RefreshWorkspaceImagePreview();
+        UpdateUiState();
     }
 
     private void AnnotationListBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
@@ -1217,6 +1262,7 @@ public partial class MainWindow : Window
         CaptureScreenshotButton.IsEnabled = isEnabled;
         FollowAlongCaptureButton.IsEnabled = isEnabled;
         AttachPoolImageButton.IsEnabled = isEnabled;
+        ScanAssetPoolButton.IsEnabled = isEnabled;
         ImagePoolListBox.IsEnabled = isEnabled;
         InsertImageReferenceButton.IsEnabled = isEnabled;
         RemoveImageButton.IsEnabled = isEnabled;
@@ -1250,6 +1296,8 @@ public partial class MainWindow : Window
         var hasProject = currentProject is not null && currentMetadata is not null;
         var hasSelectedStep = StepsListBox.SelectedItem is EditableStep;
         var hasSelectedAsset = selectedAssetId.HasValue && GetSelectedEditableAsset() is not null;
+        var isPoolTabActive = IsPoolTabActive();
+        var hasSelectedStepAsset = hasSelectedAsset && !isPoolTabActive;
         var hasSelectedAnnotation = selectedAnnotationId.HasValue && GetSelectedAnnotation() is not null;
         var hasSelectedPoolAsset = selectedPoolAssetId.HasValue && currentAssets.Any(asset => asset.Id == selectedPoolAssetId.Value);
 
@@ -1264,28 +1312,29 @@ public partial class MainWindow : Window
         FollowAlongCaptureButton.IsEnabled = hasProject && hasSelectedStep;
         FollowAlongCaptureButton.Content = isFollowAlongCaptureActive ? "Stop follow" : "Follow along";
         AttachPoolImageButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedPoolAsset;
+        ScanAssetPoolButton.IsEnabled = hasProject;
         ImagePoolListBox.IsEnabled = hasProject;
-        InsertImageReferenceButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset;
-        RemoveImageButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset;
-        ClearCropButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset && GetSelectedImageRef()?.Crop is not null;
-        CropXSlider.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset;
-        CropYSlider.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset;
-        CropWidthSlider.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset;
-        CropHeightSlider.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset;
-        AddHighlightButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset;
-        AddLabelButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset;
-        AddArrowButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset;
-        AddRedactButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset;
-        RemoveAnnotationButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset && selectedAssetAnnotations.Count > 0;
-        MoveAnnotationUpButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset && CanMoveSelectedAnnotation(-1);
-        MoveAnnotationDownButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset && CanMoveSelectedAnnotation(1);
-        AnnotationListBox.IsEnabled = hasProject && hasSelectedStep && hasSelectedAsset;
-        AnnotationTextBox.IsEnabled = hasProject && hasSelectedAnnotation && GetSelectedAnnotation()?.Kind == GuideAnnotationKind.Label;
-        AnnotationXSlider.IsEnabled = hasProject && hasSelectedAnnotation;
-        AnnotationYSlider.IsEnabled = hasProject && hasSelectedAnnotation;
-        AnnotationWidthSlider.IsEnabled = hasProject && hasSelectedAnnotation;
-        AnnotationHeightSlider.IsEnabled = hasProject && hasSelectedAnnotation;
-        LabelStylePanel.IsEnabled = hasProject && GetSelectedAnnotation()?.Kind == GuideAnnotationKind.Label;
+        InsertImageReferenceButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedStepAsset;
+        RemoveImageButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedStepAsset;
+        ClearCropButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedStepAsset && GetSelectedImageRef()?.Crop is not null;
+        CropXSlider.IsEnabled = hasProject && hasSelectedStep && hasSelectedStepAsset;
+        CropYSlider.IsEnabled = hasProject && hasSelectedStep && hasSelectedStepAsset;
+        CropWidthSlider.IsEnabled = hasProject && hasSelectedStep && hasSelectedStepAsset;
+        CropHeightSlider.IsEnabled = hasProject && hasSelectedStep && hasSelectedStepAsset;
+        AddHighlightButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedStepAsset;
+        AddLabelButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedStepAsset;
+        AddArrowButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedStepAsset;
+        AddRedactButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedStepAsset;
+        RemoveAnnotationButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedStepAsset && selectedAssetAnnotations.Count > 0;
+        MoveAnnotationUpButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedStepAsset && CanMoveSelectedAnnotation(-1);
+        MoveAnnotationDownButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedStepAsset && CanMoveSelectedAnnotation(1);
+        AnnotationListBox.IsEnabled = hasProject && hasSelectedStep && hasSelectedStepAsset;
+        AnnotationTextBox.IsEnabled = hasProject && hasSelectedStepAsset && hasSelectedAnnotation && GetSelectedAnnotation()?.Kind == GuideAnnotationKind.Label;
+        AnnotationXSlider.IsEnabled = hasProject && hasSelectedStepAsset && hasSelectedAnnotation;
+        AnnotationYSlider.IsEnabled = hasProject && hasSelectedStepAsset && hasSelectedAnnotation;
+        AnnotationWidthSlider.IsEnabled = hasProject && hasSelectedStepAsset && hasSelectedAnnotation;
+        AnnotationHeightSlider.IsEnabled = hasProject && hasSelectedStepAsset && hasSelectedAnnotation;
+        LabelStylePanel.IsEnabled = hasProject && hasSelectedStepAsset && GetSelectedAnnotation()?.Kind == GuideAnnotationKind.Label;
         GuideTitleTextBox.IsEnabled = hasProject;
         StepTitleTextBox.IsEnabled = hasSelectedStep;
         StepBodyTextBox.IsEnabled = hasSelectedStep;
@@ -1295,6 +1344,11 @@ public partial class MainWindow : Window
     private EditableStep? GetSelectedStep()
     {
         return StepsListBox.SelectedItem as EditableStep;
+    }
+
+    private bool IsPoolTabActive()
+    {
+        return StepImagesTabControl.SelectedItem == PoolImagesTab;
     }
 
     private EditableAsset? GetSelectedEditableAsset()

@@ -78,6 +78,8 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | 2026-04-26 | Follow Along captures left, right, and middle clicks | Dropdown and context menu workflows can depend on non-left mouse buttons | Follow-along capture listens for mouse 1, 2, and 3 button-up events with debounce |
 | 2026-04-26 | Follow Along captures the screen under the mouse | Multi-monitor capture should avoid huge virtual-screen images and focus on the active workflow | Follow-along screenshots use the monitor containing the click; right-click capture is delayed briefly so context menus can render |
 | 2026-04-26 | Image workspace refresh made explicit | Binding through the step image list selected item could leave the Image workspace stale, and pool selection was not reflected | Selecting another step or pool image now directly refreshes the workspace image source, geometry, and annotation overlay |
+| 2026-04-26 | Pool remains `guide.json`-registered with asset-folder scan | `guide.json` should stay source of truth, but users may have image files already in `assets/` | Pool has a scan action that registers untracked image files from `assets/` without attaching them to a step |
+| 2026-04-26 | Pool tab is not a step-editing context | Step image actions are confusing when the Pool tab has focus | Remove, Insert ref, crop, and annotation controls are disabled while Pool is active; Scan assets also reports registered images that are missing on disk |
 
 ## Open Blockers
 
@@ -97,7 +99,7 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | 5 Images and screenshot capture | Complete | Import, paste, capture, attach, and preview wired |
 | 6 Basic annotation | Complete | Highlight, label, arrow, redaction overlays wired |
 | 7 PDF export and preview | Complete | PDFsharp export, local preview, and export warning added |
-| 8 MVP hardening | In progress | Image pool model/storage/export and app save/load bridge slices are in place; visible image pool UI, basic crop editing, and initial Follow Along Capture are added. Annotation editor polish, rotate controls, and final polish remain |
+| 8 MVP hardening | In progress | Image pool model/storage/export and app save/load bridge slices are in place; visible image pool UI, asset-folder scan, basic crop editing, and initial Follow Along Capture are added. Annotation editor polish, rotate controls, and final polish remain |
 
 ## Validation Log
 
@@ -177,6 +179,10 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | 2026-04-26 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Follow Along per-monitor capture and workspace refresh build; Release tests passed; 32 tests passed |
 | 2026-04-26 | `git diff --check` | Pass | Step/Pool workspace image selection refresh whitespace check clean |
 | 2026-04-26 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Step/Pool workspace image selection refresh build; Release tests passed; 32 tests passed |
+| 2026-04-26 | `git diff --check` | Pass | Asset pool scan whitespace check clean |
+| 2026-04-26 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Asset pool scan build; Release tests passed; 33 tests passed |
+| 2026-04-26 | `git diff --check` | Pass | Pool tab action gating and missing asset scan whitespace check clean |
+| 2026-04-26 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Pool tab action gating and missing asset scan build; Release tests passed; 34 tests passed |
 
 ## Known Risks
 

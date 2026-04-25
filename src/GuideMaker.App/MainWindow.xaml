@@ -443,13 +443,18 @@
                         <TabItem x:Name="PoolImagesTab"
                                  Header="Pool">
                             <DockPanel Margin="0,6,0,0">
-                                <Button x:Name="AttachPoolImageButton"
-                                        DockPanel.Dock="Top"
-                                        Content="Attach to step"
-                                        MinWidth="120"
-                                        HorizontalAlignment="Left"
-                                        Margin="0,0,0,8"
-                                        Click="AttachPoolImageButton_Click" />
+                                <WrapPanel DockPanel.Dock="Top"
+                                           Margin="0,0,0,8">
+                                    <Button x:Name="AttachPoolImageButton"
+                                            Content="Attach to step"
+                                            MinWidth="120"
+                                            Margin="0,0,8,0"
+                                            Click="AttachPoolImageButton_Click" />
+                                    <Button x:Name="ScanAssetPoolButton"
+                                            Content="Scan assets"
+                                            MinWidth="108"
+                                            Click="ScanAssetPoolButton_Click" />
+                                </WrapPanel>
                                 <ListBox x:Name="ImagePoolListBox"
                                          ScrollViewer.VerticalScrollBarVisibility="Auto"
                                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
