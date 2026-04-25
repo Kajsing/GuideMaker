@@ -4,9 +4,9 @@
 
 Phase: Implementation
 
-Current milestone: Milestone 1 - Repo skeleton and core model
+Current milestone: Milestone 3 - Markdown and HTML export
 
-Status: Milestone 1 validation passes with .NET 8 SDK installed.
+Status: Milestone 2 storage hardening is complete. Next step is export hardening for Markdown and HTML.
 
 ## Decision Log
 
@@ -23,6 +23,7 @@ Status: Milestone 1 validation passes with .NET 8 SDK installed.
 | 2026-04-25 | Docs split into `docs/` | Makes project guidance easier to maintain | Large package remains as historical context |
 | 2026-04-25 | Original research package moved to `archive/` | Keeps repo root focused on active project files | `docs/` remains the source of current guidance |
 | 2026-04-25 | .NET 8 SDK installed and validation scripts hardened | Enables real build/test validation | `validate.ps1` now passes and opts out of .NET CLI telemetry |
+| 2026-04-25 | Storage layer hardened | UI can rely on clearer project load/save behavior | Missing files, invalid JSON, schema errors, unsafe asset paths, and missing assets are covered |
 
 ## Open Blockers
 
@@ -36,8 +37,8 @@ Status: Milestone 1 validation passes with .NET 8 SDK installed.
 |---|---|---|
 | 0 Research and decisions | Complete | Blockers resolved |
 | 1 Repo skeleton and core model | Complete | `validate.ps1` passes |
-| 2 Storage layer hardening | Ready | Next milestone |
-| 3 Markdown and HTML export | Not started | Basic exporter classes exist; hardening later |
+| 2 Storage layer hardening | Complete | Validation passes with 10 tests |
+| 3 Markdown and HTML export | Ready | Basic exporter classes exist; hardening next |
 | 4 Basic UI shell | Not started | WPF shell exists; workflow not wired |
 | 5 Images and screenshot capture | Not started | MVP scope |
 | 6 Basic annotation | Not started | MVP scope |
@@ -58,6 +59,7 @@ Status: Milestone 1 validation passes with .NET 8 SDK installed.
 | 2026-04-25 | `git diff --check` | Pass | After moving research package to `archive/` |
 | 2026-04-25 | `winget install --id Microsoft.DotNet.SDK.8 --exact` | Pass | Installed .NET SDK 8.0.420 |
 | 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Restore/build/test passed; 2 tests passed |
+| 2026-04-25 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Restore/build/test passed; 10 tests passed |
 
 ## Known Risks
 
@@ -70,7 +72,7 @@ Status: Milestone 1 validation passes with .NET 8 SDK installed.
 
 ## Next Recommended Step
 
-Start Milestone 2: harden the storage layer around project creation/open/save, malformed JSON, schema version checks, missing assets, and path safety.
+Start Milestone 3: harden Markdown and HTML export, add export file writing, and add smoke tests using the sample guide.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1

@@ -8,6 +8,8 @@ public sealed record GuideProject
 
     public required GuideDocument Document { get; init; }
 
+    public IReadOnlyList<string> MissingAssetPaths { get; init; } = [];
+
     public string GuideFilePath => Path.Combine(ProjectDirectory, GuideProjectLayout.GuideFileName);
 
     public string AssetsDirectory => Path.Combine(ProjectDirectory, GuideProjectLayout.AssetsDirectoryName);

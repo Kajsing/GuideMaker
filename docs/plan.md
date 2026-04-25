@@ -2,9 +2,9 @@
 
 ## Current State
 
-Current milestone: Milestone 1 - Repo skeleton and core model.
+Current milestone: Milestone 3 - Markdown And HTML Export.
 
-Status: in progress. Initial solution skeleton exists and validation now passes with .NET 8 SDK installed.
+Status: Milestone 2 is complete. Storage now validates guide projects, reports missing assets, and has smoke coverage for create/save/load and invalid project files.
 
 ## Milestone 0 - Research And Decisions
 
@@ -41,6 +41,8 @@ Acceptance:
 
 ## Milestone 2 - Storage Layer Hardening
 
+Status: complete.
+
 Scope:
 
 - project creation/open/save workflow
@@ -55,6 +57,8 @@ Acceptance:
 - sample guide can be opened by storage tests.
 
 ## Milestone 3 - Markdown And HTML Export
+
+Status: ready.
 
 Scope:
 

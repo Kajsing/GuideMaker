@@ -22,13 +22,16 @@ public sealed class GuideProjectStore
         ArgumentException.ThrowIfNullOrWhiteSpace(projectDirectory);
         ArgumentNullException.ThrowIfNull(document);
 
-        Directory.CreateDirectory(projectDirectory);
-        Directory.CreateDirectory(Path.Combine(projectDirectory, GuideProjectLayout.AssetsDirectoryName));
-        Directory.CreateDirectory(Path.Combine(projectDirectory, GuideProjectLayout.ExportsDirectoryName));
+        var fullPath = Path.GetFullPath(projectDirectory);
+        ThrowIfInvalid(fullPath, document);
+
+        Directory.CreateDirectory(fullPath);
+        Directory.CreateDirectory(Path.Combine(fullPath, GuideProjectLayout.AssetsDirectoryName));
+        Directory.CreateDirectory(Path.Combine(fullPath, GuideProjectLayout.ExportsDirectoryName));
 
         var project = new GuideProject
         {
-            ProjectDirectory = Path.GetFullPath(projectDirectory),
+            ProjectDirectory = fullPath,
             Document = document
         };
 
@@ -39,6 +42,7 @@ public sealed class GuideProjectStore
     public async Task SaveAsync(GuideProject project, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(project);
+        ThrowIfInvalid(project.ProjectDirectory, project.Document);
 
         Directory.CreateDirectory(project.ProjectDirectory);
         Directory.CreateDirectory(project.AssetsDirectory);
@@ -62,22 +66,42 @@ public sealed class GuideProjectStore
 
         if (!File.Exists(guideFilePath))
         {
-            throw new FileNotFoundException("Guide project file was not found.", guideFilePath);
+            throw new GuideProjectFileMissingException(guideFilePath);
         }
 
-        await using var stream = File.OpenRead(guideFilePath);
-        var document = await JsonSerializer.DeserializeAsync<GuideDocument>(stream, JsonOptions, cancellationToken)
-            .ConfigureAwait(false);
+        GuideDocument? document;
+        try
+        {
+            await using var stream = File.OpenRead(guideFilePath);
+            document = await JsonSerializer.DeserializeAsync<GuideDocument>(stream, JsonOptions, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (JsonException exception)
+        {
+            throw new GuideProjectFormatException(guideFilePath, exception);
+        }
 
         if (document is null)
         {
-            throw new InvalidDataException("Guide project file was empty or invalid.");
+            throw new GuideProjectValidationException(["Guide project file was empty."]);
         }
+
+        ThrowIfInvalid(fullPath, document);
 
         return new GuideProject
         {
             ProjectDirectory = fullPath,
-            Document = document
+            Document = document,
+            MissingAssetPaths = GuideProjectValidator.FindMissingAssetFiles(fullPath, document)
         };
+    }
+
+    private static void ThrowIfInvalid(string projectDirectory, GuideDocument document)
+    {
+        var errors = GuideProjectValidator.Validate(projectDirectory, document);
+        if (errors.Count > 0)
+        {
+            throw new GuideProjectValidationException(errors);
+        }
     }
 }
