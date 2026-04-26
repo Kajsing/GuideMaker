@@ -48,11 +48,13 @@ public partial class MainWindow : Window
     private Guid? selectedAnnotationId;
     private Guid? draggedAnnotationId;
     private System.Windows.Point annotationDragOffset;
+    private System.Windows.Point cropDragStart;
     private bool isDarkMode;
     private bool isDirty;
     private bool isUpdatingUi;
     private bool isChangingAssetSelection;
     private bool isDraggingAnnotation;
+    private bool isDraggingCrop;
     private bool isRefreshingAssets;
     private bool isRefreshingAnnotations;
     private bool isFollowAlongCaptureActive;
@@ -897,6 +899,12 @@ public partial class MainWindow : Window
         SetStatus("Crop cleared for selected image.");
     }
 
+    private void CropEditorExpander_Toggled(object sender, RoutedEventArgs e)
+    {
+        RefreshWorkspaceImagePreview();
+        UpdateUiState();
+    }
+
     private void LabelStyle_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         if (isUpdatingUi)
@@ -967,8 +975,45 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
+    private void WorkspaceImageSurface_PreviewMouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (!IsCropWorkspaceModeActive() || GetSelectedEditableAsset() is not { } selectedAsset)
+        {
+            return;
+        }
+
+        var pointer = e.GetPosition(WorkspaceImageSurface);
+        if (!IsPointInsideWorkspaceOriginalImage(pointer, selectedAsset))
+        {
+            return;
+        }
+
+        cropDragStart = ClampPointToWorkspaceOriginalImage(pointer, selectedAsset);
+        isDraggingCrop = true;
+        WorkspaceImageSurface.CaptureMouse();
+        UpdateCropFromWorkspaceDrag(cropDragStart, selectedAsset);
+        e.Handled = true;
+    }
+
     private void WorkspaceImageSurface_PreviewMouseMove(object sender, System.Windows.Input.MouseEventArgs e)
     {
+        if (isDraggingCrop)
+        {
+            if (e.LeftButton != System.Windows.Input.MouseButtonState.Pressed)
+            {
+                EndCropDrag(commit: true);
+                return;
+            }
+
+            if (GetSelectedEditableAsset() is { } cropAsset)
+            {
+                UpdateCropFromWorkspaceDrag(e.GetPosition(WorkspaceImageSurface), cropAsset);
+                e.Handled = true;
+            }
+
+            return;
+        }
+
         if (!isDraggingAnnotation || draggedAnnotationId is not { } annotationId)
         {
             return;
@@ -1012,6 +1057,13 @@ public partial class MainWindow : Window
 
     private void WorkspaceImageSurface_PreviewMouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
+        if (isDraggingCrop)
+        {
+            EndCropDrag(commit: true);
+            e.Handled = true;
+            return;
+        }
+
         if (!isDraggingAnnotation)
         {
             return;
@@ -1708,12 +1760,167 @@ public partial class MainWindow : Window
     private void RefreshWorkspaceImagePreview(EditableAsset? selectedAsset = null)
     {
         selectedAsset ??= GetSelectedEditableAsset();
-        WorkspaceSelectedImage.Source = selectedAsset?.DisplayImageSource;
-        WorkspaceSelectedImage.Width = selectedAsset?.WorkspaceImageWidth ?? 0;
-        WorkspaceSelectedImage.Height = selectedAsset?.WorkspaceImageHeight ?? 0;
-        System.Windows.Controls.Canvas.SetLeft(WorkspaceSelectedImage, selectedAsset?.WorkspaceImageX ?? 0);
-        System.Windows.Controls.Canvas.SetTop(WorkspaceSelectedImage, selectedAsset?.WorkspaceImageY ?? 0);
+        var useCropSurface = IsCropWorkspaceModeActive() && selectedAsset is not null;
+
+        WorkspaceSelectedImage.Source = useCropSurface
+            ? selectedAsset?.OriginalImageSource
+            : selectedAsset?.DisplayImageSource;
+        WorkspaceSelectedImage.Width = useCropSurface
+            ? selectedAsset?.WorkspaceOriginalImageWidth ?? 0
+            : selectedAsset?.WorkspaceImageWidth ?? 0;
+        WorkspaceSelectedImage.Height = useCropSurface
+            ? selectedAsset?.WorkspaceOriginalImageHeight ?? 0
+            : selectedAsset?.WorkspaceImageHeight ?? 0;
+        System.Windows.Controls.Canvas.SetLeft(
+            WorkspaceSelectedImage,
+            useCropSurface ? selectedAsset?.WorkspaceOriginalImageX ?? 0 : selectedAsset?.WorkspaceImageX ?? 0);
+        System.Windows.Controls.Canvas.SetTop(
+            WorkspaceSelectedImage,
+            useCropSurface ? selectedAsset?.WorkspaceOriginalImageY ?? 0 : selectedAsset?.WorkspaceImageY ?? 0);
+
         WorkspaceAnnotationOverlay.ItemsSource = selectedAsset?.Annotations ?? Array.Empty<EditableAnnotationPreview>();
+        WorkspaceAnnotationOverlay.Visibility = useCropSurface ? Visibility.Collapsed : Visibility.Visible;
+        WorkspaceImageSurface.Cursor = useCropSurface
+            ? System.Windows.Input.Cursors.Cross
+            : System.Windows.Input.Cursors.Arrow;
+        RefreshWorkspaceCropOverlay(selectedAsset);
+    }
+
+    private bool IsCropWorkspaceModeActive()
+    {
+        return CropEditorExpander.IsExpanded &&
+            !IsPoolTabActive() &&
+            GetSelectedImageRef() is not null;
+    }
+
+    private void RefreshWorkspaceCropOverlay(EditableAsset? selectedAsset)
+    {
+        if (!IsCropWorkspaceModeActive() ||
+            selectedAsset is null ||
+            selectedAsset.WorkspaceOriginalImageWidth <= 0 ||
+            selectedAsset.WorkspaceOriginalImageHeight <= 0)
+        {
+            WorkspaceCropOverlayCanvas.Visibility = Visibility.Collapsed;
+            WorkspaceCropOverlay.Width = 0;
+            WorkspaceCropOverlay.Height = 0;
+            return;
+        }
+
+        var crop = GetSelectedImageRef()?.Crop ?? CreateFullImageCrop();
+        var left = selectedAsset.WorkspaceOriginalImageX + crop.X * selectedAsset.WorkspaceOriginalImageWidth;
+        var top = selectedAsset.WorkspaceOriginalImageY + crop.Y * selectedAsset.WorkspaceOriginalImageHeight;
+        var width = crop.Width * selectedAsset.WorkspaceOriginalImageWidth;
+        var height = crop.Height * selectedAsset.WorkspaceOriginalImageHeight;
+
+        WorkspaceCropOverlayCanvas.Visibility = Visibility.Visible;
+        WorkspaceCropOverlay.Width = Math.Max(1, width);
+        WorkspaceCropOverlay.Height = Math.Max(1, height);
+        System.Windows.Controls.Canvas.SetLeft(WorkspaceCropOverlay, left);
+        System.Windows.Controls.Canvas.SetTop(WorkspaceCropOverlay, top);
+    }
+
+    private void UpdateCropFromWorkspaceDrag(System.Windows.Point pointer, EditableAsset selectedAsset)
+    {
+        if (GetSelectedImageRef() is not { } imageRef)
+        {
+            return;
+        }
+
+        var clampedPointer = ClampPointToWorkspaceOriginalImage(pointer, selectedAsset);
+        var startX = ToWorkspaceOriginalImageRatio(cropDragStart.X, selectedAsset.WorkspaceOriginalImageX, selectedAsset.WorkspaceOriginalImageWidth);
+        var startY = ToWorkspaceOriginalImageRatio(cropDragStart.Y, selectedAsset.WorkspaceOriginalImageY, selectedAsset.WorkspaceOriginalImageHeight);
+        var endX = ToWorkspaceOriginalImageRatio(clampedPointer.X, selectedAsset.WorkspaceOriginalImageX, selectedAsset.WorkspaceOriginalImageWidth);
+        var endY = ToWorkspaceOriginalImageRatio(clampedPointer.Y, selectedAsset.WorkspaceOriginalImageY, selectedAsset.WorkspaceOriginalImageHeight);
+        var x = Math.Min(startX, endX);
+        var y = Math.Min(startY, endY);
+        var width = Math.Max(0.01, Math.Abs(endX - startX));
+        var height = Math.Max(0.01, Math.Abs(endY - startY));
+
+        var crop = new ImageCropBounds
+        {
+            X = Math.Clamp(x, 0, 1 - width),
+            Y = Math.Clamp(y, 0, 1 - height),
+            Width = Math.Clamp(width, 0.01, 1),
+            Height = Math.Clamp(height, 0.01, 1)
+        };
+
+        ApplySelectedImageRefCropQuietly(imageRef, crop);
+        LoadCropIntoEditor(crop);
+        RefreshWorkspaceCropOverlay(selectedAsset);
+    }
+
+    private void ApplySelectedImageRefCropQuietly(StepImageRef imageRef, ImageCropBounds crop)
+    {
+        var selectedStep = GetSelectedStep();
+        if (selectedStep is null)
+        {
+            return;
+        }
+
+        var index = selectedStep.ImageRefs.FindIndex(candidate => candidate.Id == imageRef.Id);
+        if (index < 0)
+        {
+            return;
+        }
+
+        selectedStep.ImageRefs[index] = imageRef with { Crop = crop };
+        selectedAssetId = imageRef.AssetId;
+        selectedImageRefId = imageRef.Id;
+    }
+
+    private void EndCropDrag(bool commit)
+    {
+        isDraggingCrop = false;
+        WorkspaceImageSurface.ReleaseMouseCapture();
+
+        if (!commit || GetSelectedImageRef() is not { } imageRef)
+        {
+            return;
+        }
+
+        RefreshSelectedStepAssets(imageRef.AssetId, imageRef.Id);
+        LoadSelectedCropIntoEditor();
+        MarkDirty();
+        SetStatus("Crop updated for selected image.");
+    }
+
+    private static ImageCropBounds CreateFullImageCrop()
+    {
+        return new ImageCropBounds
+        {
+            X = 0,
+            Y = 0,
+            Width = 1,
+            Height = 1
+        };
+    }
+
+    private static bool IsPointInsideWorkspaceOriginalImage(System.Windows.Point point, EditableAsset selectedAsset)
+    {
+        return point.X >= selectedAsset.WorkspaceOriginalImageX &&
+            point.X <= selectedAsset.WorkspaceOriginalImageX + selectedAsset.WorkspaceOriginalImageWidth &&
+            point.Y >= selectedAsset.WorkspaceOriginalImageY &&
+            point.Y <= selectedAsset.WorkspaceOriginalImageY + selectedAsset.WorkspaceOriginalImageHeight;
+    }
+
+    private static System.Windows.Point ClampPointToWorkspaceOriginalImage(System.Windows.Point point, EditableAsset selectedAsset)
+    {
+        return new System.Windows.Point(
+            Math.Clamp(
+                point.X,
+                selectedAsset.WorkspaceOriginalImageX,
+                selectedAsset.WorkspaceOriginalImageX + selectedAsset.WorkspaceOriginalImageWidth),
+            Math.Clamp(
+                point.Y,
+                selectedAsset.WorkspaceOriginalImageY,
+                selectedAsset.WorkspaceOriginalImageY + selectedAsset.WorkspaceOriginalImageHeight));
+    }
+
+    private static double ToWorkspaceOriginalImageRatio(double value, double imageOffset, double imageSize)
+    {
+        return imageSize <= 0
+            ? 0
+            : Math.Clamp((value - imageOffset) / imageSize, 0, 1);
     }
 
     private void RefreshSelectedAssetAnnotations(Guid? preferredAnnotationId = null, bool reloadEditor = true)
@@ -1903,22 +2110,17 @@ public partial class MainWindow : Window
 
     private void LoadSelectedCropIntoEditor()
     {
+        LoadCropIntoEditor(GetSelectedImageRef()?.Crop ?? CreateFullImageCrop());
+    }
+
+    private void LoadCropIntoEditor(ImageCropBounds crop)
+    {
         isUpdatingUi = true;
-
-        var crop = GetSelectedImageRef()?.Crop ?? new ImageCropBounds
-        {
-            X = 0,
-            Y = 0,
-            Width = 1,
-            Height = 1
-        };
-
         ApplyCropSliderRanges(crop);
         CropXSlider.Value = crop.X * 100;
         CropYSlider.Value = crop.Y * 100;
         CropWidthSlider.Value = crop.Width * 100;
         CropHeightSlider.Value = crop.Height * 100;
-
         isUpdatingUi = false;
     }
 
@@ -2253,6 +2455,8 @@ public partial class MainWindow : Window
 
         public required ImageSource? DisplayImageSource { get; init; }
 
+        public required ImageSource? OriginalImageSource { get; init; }
+
         public required string AnnotationSummary { get; init; }
 
         public required string CropSummary { get; init; }
@@ -2283,6 +2487,14 @@ public partial class MainWindow : Window
 
         public required double WorkspaceImageHeight { get; init; }
 
+        public required double WorkspaceOriginalImageX { get; init; }
+
+        public required double WorkspaceOriginalImageY { get; init; }
+
+        public required double WorkspaceOriginalImageWidth { get; init; }
+
+        public required double WorkspaceOriginalImageHeight { get; init; }
+
         public static EditableAsset FromGuideAsset(
             string projectDirectory,
             GuideAsset asset,
@@ -2300,11 +2512,14 @@ public partial class MainWindow : Window
 
             var annotationList = annotations.ToArray();
             var fullPath = Path.Combine(projectDirectory, asset.RelativePath.Replace('/', Path.DirectorySeparatorChar));
-            var displayImage = CreateDisplayImage(fullPath, crop);
-            var imageSize = GetImageSize(displayImage) ?? ReadImageSize(fullPath);
+            var originalImage = CreateDisplayImage(fullPath, crop: null);
+            var displayImage = crop is null ? originalImage : CreateDisplayImage(fullPath, crop);
+            var originalImageSize = GetImageSize(originalImage) ?? ReadImageSize(fullPath);
+            var imageSize = GetImageSize(displayImage) ?? originalImageSize;
             var thumbGeometry = CalculateFitGeometry(thumbFrameWidth, thumbFrameHeight, imageSize.Width, imageSize.Height);
             var editorGeometry = CalculateFitGeometry(editorFrameWidth, editorFrameHeight, imageSize.Width, imageSize.Height);
             var workspaceGeometry = CalculateFitGeometry(workspaceFrameWidth, workspaceFrameHeight, imageSize.Width, imageSize.Height);
+            var workspaceOriginalGeometry = CalculateFitGeometry(workspaceFrameWidth, workspaceFrameHeight, originalImageSize.Width, originalImageSize.Height);
 
             return new EditableAsset
             {
@@ -2314,6 +2529,7 @@ public partial class MainWindow : Window
                 RelativePath = asset.RelativePath,
                 FullPath = fullPath,
                 DisplayImageSource = displayImage,
+                OriginalImageSource = originalImage,
                 AnnotationSummary = annotationList.Length == 0 ? "No annotations" : $"{annotationList.Length} annotation(s)",
                 CropSummary = crop is null ? "Full image" : $"Crop X {ToPercent(crop.X)}, Y {ToPercent(crop.Y)}, W {ToPercent(crop.Width)}, H {ToPercent(crop.Height)}",
                 Annotations = annotationList.Select(annotation => EditableAnnotationPreview.FromGuideAnnotation(annotation, thumbGeometry, editorGeometry, workspaceGeometry)).ToArray(),
@@ -2328,7 +2544,11 @@ public partial class MainWindow : Window
                 WorkspaceImageX = workspaceGeometry.X,
                 WorkspaceImageY = workspaceGeometry.Y,
                 WorkspaceImageWidth = workspaceGeometry.Width,
-                WorkspaceImageHeight = workspaceGeometry.Height
+                WorkspaceImageHeight = workspaceGeometry.Height,
+                WorkspaceOriginalImageX = workspaceOriginalGeometry.X,
+                WorkspaceOriginalImageY = workspaceOriginalGeometry.Y,
+                WorkspaceOriginalImageWidth = workspaceOriginalGeometry.Width,
+                WorkspaceOriginalImageHeight = workspaceOriginalGeometry.Height
             };
         }
 

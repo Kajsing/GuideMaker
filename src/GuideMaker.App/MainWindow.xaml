@@ -551,6 +551,8 @@
                         <Expander x:Name="CropEditorExpander"
                                   Header="Crop"
                                   IsExpanded="False"
+                                  Expanded="CropEditorExpander_Toggled"
+                                  Collapsed="CropEditorExpander_Toggled"
                                   Foreground="{DynamicResource TextBrush}">
                             <Grid Margin="0,10,0,0">
                                 <Grid.RowDefinitions>
@@ -1061,12 +1063,23 @@
                                           Width="760"
                                           Height="520"
                                           Background="Transparent"
+                                          PreviewMouseLeftButtonDown="WorkspaceImageSurface_PreviewMouseLeftButtonDown"
                                           PreviewMouseMove="WorkspaceImageSurface_PreviewMouseMove"
                                           PreviewMouseLeftButtonUp="WorkspaceImageSurface_PreviewMouseLeftButtonUp">
                                         <Canvas Width="760"
                                                 Height="520">
                                             <Image x:Name="WorkspaceSelectedImage"
                                                    Stretch="Fill" />
+                                        </Canvas>
+                                        <Canvas x:Name="WorkspaceCropOverlayCanvas"
+                                                Width="760"
+                                                Height="520"
+                                                IsHitTestVisible="False"
+                                                Visibility="Collapsed">
+                                            <Border x:Name="WorkspaceCropOverlay"
+                                                    BorderBrush="#F4B400"
+                                                    BorderThickness="3"
+                                                    Background="#22F4B400" />
                                         </Canvas>
                                         <ItemsControl x:Name="WorkspaceAnnotationOverlay">
                                             <ItemsControl.ItemsPanel>

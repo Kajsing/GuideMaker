@@ -85,6 +85,7 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | 2026-04-26 | Step image refs can be inserted explicitly | Duplicate pool images need a visible way to choose which use appears in text | `Insert ref` now writes `[[image-ref:<id>]]` for step image uses, and export resolves it to the correct rendered image |
 | 2026-04-26 | Steps can be reordered | Authors need to adjust guide flow without copy/paste | Step list has up/down controls that move the selected step and renumber orders |
 | 2026-04-26 | Workspace preview refresh made calmer | Larger guides were starting to lag during typing | Auto-refresh now uses a longer debounce and the workspace header has a manual Refresh button |
+| 2026-04-26 | Crop can be drawn in the Image workspace | Slider-only crop editing was too indirect for follow-along screenshots | Opening Crop shows the original image with a crop box; dragging on the Image workspace updates the selected step image ref non-destructively |
 
 ## Open Blockers
 
@@ -194,6 +195,8 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | 2026-04-26 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Explicit step image-ref token export build; Release tests passed; 36 tests passed |
 | 2026-04-26 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Step reorder controls build; Release tests passed; 36 tests passed |
 | 2026-04-26 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Workspace preview refresh control build; Release tests passed; 36 tests passed |
+| 2026-04-26 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Direct workspace crop editing build; Release tests passed; 36 tests passed |
+| 2026-04-26 | Manual smoke test | Pass | User approved direct workspace crop editing after testing the image pipeline flow |
 
 ## Known Risks
 
@@ -208,8 +211,8 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | Annotation placement still needs richer direct manipulation | Medium | Basic drag-to-move is added; resize handles and rotate controls remain |
 | Annotation editor UI is getting crowded | Medium | Add hide/show or collapsible surfaces during M8 hardening |
 | Image list navigation is cramped | Medium | Rework Images area during image pool UI so three or more images are easy to scan and the scrollbar feels natural |
-| Image workspace does not fit large images well | Medium | Make the right-side Image workspace fit the available pane better before adding crop/resize handles |
-| Crop editing needs direct manipulation | Medium | Future crop mode should allow dragging a crop rectangle directly on the Workspace Image surface when Step tab and Crop are active |
+| Image workspace does not fit large images well | Medium | Crop mode now shows the original image for direct selection; future zoom/pan can improve precision for very large or ultrawide screenshots |
+| Crop editing needs richer direct manipulation | Low | Basic drag-to-crop is added; resize handles can be added later if slider fine-tuning is still too clunky |
 | Follow Along Capture needs desktop smoke testing | Medium | Win32 mouse hooks and minimization behavior must be verified manually on the target Windows machine |
 | Preview refresh needs settings | Low | Add Settings control for preview update rate/manual-only mode, then decide whether the top Preview button should be removed |
 
