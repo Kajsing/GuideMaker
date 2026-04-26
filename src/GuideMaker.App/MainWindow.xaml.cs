@@ -30,9 +30,14 @@ public partial class MainWindow : Window
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     private const int WhMouseLl = 14;
+    private const int WmLButtonDown = 0x0201;
     private const int WmLButtonUp = 0x0202;
+    private const int WmRButtonDown = 0x0204;
     private const int WmRButtonUp = 0x0205;
+    private const int WmMButtonDown = 0x0207;
     private const int WmMButtonUp = 0x0208;
+    private const int CursorShowing = 0x00000001;
+    private const int DiNormal = 0x0003;
 
     private readonly GuideProjectStore projectStore = new();
     private readonly GuideAssetFileStore assetFileStore = new();
@@ -71,6 +76,7 @@ public partial class MainWindow : Window
     private bool closeAlreadyConfirmed;
     private int followAlongCaptureCount;
     private int followAlongCaptureDelayMilliseconds = 300;
+    private FollowAlongCaptureTiming followAlongCaptureTiming = FollowAlongCaptureTiming.BeforeClick;
     private IntPtr followAlongMouseHookHandle = IntPtr.Zero;
     private LowLevelMouseProc? followAlongMouseProc;
     private DateTimeOffset lastFollowAlongCaptureAt = DateTimeOffset.MinValue;
@@ -391,6 +397,22 @@ public partial class MainWindow : Window
         }
     }
 
+    private void FollowAlongTimingComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        followAlongCaptureTiming =
+            FollowAlongTimingComboBox.SelectedItem is System.Windows.Controls.ComboBoxItem { Tag: string timingText } &&
+            string.Equals(timingText, nameof(FollowAlongCaptureTiming.AfterClick), StringComparison.Ordinal)
+                ? FollowAlongCaptureTiming.AfterClick
+                : FollowAlongCaptureTiming.BeforeClick;
+
+        if (!IsInitialized)
+        {
+            return;
+        }
+
+        UpdateUiState();
+    }
+
     private void StartFollowAlongCapture()
     {
         if (currentProject is null || GetSelectedStep() is null)
@@ -416,7 +438,10 @@ public partial class MainWindow : Window
         lastFollowAlongCaptureAt = DateTimeOffset.MinValue;
         isFollowAlongCaptureActive = true;
         FollowAlongCaptureButton.Content = "Stop follow";
-        SetStatus($"Follow along capture started. Waiting {followAlongCaptureDelayMilliseconds} ms after each click.");
+        var timingStatus = followAlongCaptureTiming == FollowAlongCaptureTiming.BeforeClick
+            ? "Capturing before each click."
+            : $"Waiting {followAlongCaptureDelayMilliseconds} ms after each click.";
+        SetStatus($"Follow along capture started. {timingStatus}");
         WindowState = WindowState.Minimized;
     }
 
@@ -442,45 +467,94 @@ public partial class MainWindow : Window
 
     private IntPtr FollowAlongMouseHookCallback(int nCode, IntPtr wParam, IntPtr lParam)
     {
-        if (nCode >= 0 && IsFollowAlongCaptureClick(wParam) && isFollowAlongCaptureActive)
+        if (nCode >= 0 && isFollowAlongCaptureActive)
         {
             var hookInfo = Marshal.PtrToStructure<LowLevelMouseHookStruct>(lParam);
             var screen = Forms.Screen.FromPoint(new Drawing.Point(hookInfo.Point.X, hookInfo.Point.Y));
-            Dispatcher.BeginInvoke(
-                () => CaptureFollowAlongScreenshotAsync(screen, followAlongCaptureDelayMilliseconds),
-                DispatcherPriority.Background);
+            if (followAlongCaptureTiming == FollowAlongCaptureTiming.BeforeClick && IsFollowAlongBeforeClick(wParam))
+            {
+                var screenshot = TryCaptureFollowAlongScreenshotNow(screen);
+                if (screenshot is not null)
+                {
+                    Dispatcher.BeginInvoke(
+                        () => SaveFollowAlongScreenshotAsync(screenshot),
+                        DispatcherPriority.Background);
+                }
+            }
+            else if (followAlongCaptureTiming == FollowAlongCaptureTiming.AfterClick && IsFollowAlongAfterClick(wParam))
+            {
+                Dispatcher.BeginInvoke(
+                    () => CaptureFollowAlongScreenshotAsync(screen, followAlongCaptureDelayMilliseconds),
+                    DispatcherPriority.Background);
+            }
         }
 
         return CallNextHookEx(followAlongMouseHookHandle, nCode, wParam, lParam);
     }
 
-    private static bool IsFollowAlongCaptureClick(IntPtr message)
+    private static bool IsFollowAlongBeforeClick(IntPtr message)
+    {
+        return message == WmLButtonDown ||
+            message == WmRButtonDown ||
+            message == WmMButtonDown;
+    }
+
+    private static bool IsFollowAlongAfterClick(IntPtr message)
     {
         return message == WmLButtonUp ||
             message == WmRButtonUp ||
             message == WmMButtonUp;
     }
 
-    private async Task CaptureFollowAlongScreenshotAsync(Forms.Screen screen, int delayMilliseconds)
+    private bool TryStartFollowAlongCapture()
     {
         if (!isFollowAlongCaptureActive ||
             isFollowAlongCaptureSaving ||
             currentProject is null ||
-            GetSelectedStep() is not { } selectedStep ||
+            GetSelectedStep() is null ||
             WindowState != WindowState.Minimized)
         {
-            return;
+            return false;
         }
 
         var now = DateTimeOffset.UtcNow;
         if (now - lastFollowAlongCaptureAt < TimeSpan.FromMilliseconds(350))
         {
-            return;
+            return false;
         }
 
         isFollowAlongCaptureSaving = true;
         lastFollowAlongCaptureAt = now;
+        return true;
+    }
 
+    private MemoryStream? TryCaptureFollowAlongScreenshotNow(Forms.Screen screen)
+    {
+        if (!TryStartFollowAlongCapture())
+        {
+            return null;
+        }
+
+        try
+        {
+            return CaptureScreenPng(screen);
+        }
+        catch
+        {
+            isFollowAlongCaptureSaving = false;
+            Dispatcher.BeginInvoke(() => SetStatus("Follow along screenshot failed."), DispatcherPriority.Background);
+            return null;
+        }
+    }
+
+    private async Task CaptureFollowAlongScreenshotAsync(Forms.Screen screen, int delayMilliseconds)
+    {
+        if (!TryStartFollowAlongCapture())
+        {
+            return;
+        }
+
+        MemoryStream? stream = null;
         try
         {
             if (delayMilliseconds > 0)
@@ -493,7 +567,34 @@ public partial class MainWindow : Window
                 return;
             }
 
-            await using var stream = CaptureScreenPng(screen);
+            stream = CaptureScreenPng(screen);
+            await SaveFollowAlongScreenshotAsync(stream).ConfigureAwait(true);
+            stream = null;
+        }
+        catch
+        {
+            SetStatus("Follow along screenshot failed.");
+            isFollowAlongCaptureSaving = false;
+        }
+        finally
+        {
+            stream?.Dispose();
+            isFollowAlongCaptureSaving = false;
+        }
+    }
+
+    private async Task SaveFollowAlongScreenshotAsync(MemoryStream stream)
+    {
+        try
+        {
+            if (!isFollowAlongCaptureActive ||
+                currentProject is null ||
+                GetSelectedStep() is not { } selectedStep ||
+                WindowState != WindowState.Minimized)
+            {
+                return;
+            }
+
             var asset = await assetFileStore.SavePngAsync(
                     currentProject,
                     $"follow {DateTime.Now:yyyyMMdd-HHmmss-fff}",
@@ -509,6 +610,7 @@ public partial class MainWindow : Window
         }
         finally
         {
+            stream.Dispose();
             isFollowAlongCaptureSaving = false;
         }
     }
@@ -1431,6 +1533,7 @@ public partial class MainWindow : Window
         PasteImageButton.IsEnabled = isEnabled;
         CaptureScreenshotButton.IsEnabled = isEnabled;
         FollowAlongCaptureButton.IsEnabled = isEnabled;
+        FollowAlongTimingComboBox.IsEnabled = isEnabled;
         FollowAlongDelayComboBox.IsEnabled = isEnabled;
         AttachPoolImageButton.IsEnabled = isEnabled;
         ScanAssetPoolButton.IsEnabled = isEnabled;
@@ -1486,7 +1589,10 @@ public partial class MainWindow : Window
         CaptureScreenshotButton.IsEnabled = hasProject && hasSelectedStep;
         FollowAlongCaptureButton.IsEnabled = hasProject && hasSelectedStep;
         FollowAlongCaptureButton.Content = isFollowAlongCaptureActive ? "Stop follow" : "Follow along";
-        FollowAlongDelayComboBox.IsEnabled = hasProject && !isFollowAlongCaptureActive;
+        FollowAlongTimingComboBox.IsEnabled = hasProject && !isFollowAlongCaptureActive;
+        FollowAlongDelayComboBox.IsEnabled = hasProject &&
+            !isFollowAlongCaptureActive &&
+            followAlongCaptureTiming == FollowAlongCaptureTiming.AfterClick;
         AttachPoolImageButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedPoolAsset;
         ScanAssetPoolButton.IsEnabled = hasProject;
         ImagePoolListBox.IsEnabled = hasProject;
@@ -2369,11 +2475,53 @@ public partial class MainWindow : Window
         using var bitmap = new Drawing.Bitmap(bounds.Width, bounds.Height);
         using var graphics = Drawing.Graphics.FromImage(bitmap);
         graphics.CopyFromScreen(bounds.Left, bounds.Top, 0, 0, bounds.Size);
+        DrawCursorOnScreenshot(graphics, bounds);
 
         var stream = new MemoryStream();
         bitmap.Save(stream, Drawing.Imaging.ImageFormat.Png);
         stream.Position = 0;
         return stream;
+    }
+
+    private static void DrawCursorOnScreenshot(Drawing.Graphics graphics, Drawing.Rectangle captureBounds)
+    {
+        var cursorInfo = new CursorInfo
+        {
+            Size = Marshal.SizeOf<CursorInfo>()
+        };
+
+        if (!GetCursorInfo(ref cursorInfo) ||
+            cursorInfo.Handle == IntPtr.Zero ||
+            (cursorInfo.Flags & CursorShowing) != CursorShowing ||
+            !captureBounds.Contains(cursorInfo.ScreenPosition.X, cursorInfo.ScreenPosition.Y))
+        {
+            return;
+        }
+
+        var iconInfoAvailable = GetIconInfo(cursorInfo.Handle, out var iconInfo);
+        var hotSpotX = iconInfoAvailable ? iconInfo.HotspotX : 0;
+        var hotSpotY = iconInfoAvailable ? iconInfo.HotspotY : 0;
+        var x = cursorInfo.ScreenPosition.X - captureBounds.Left - hotSpotX;
+        var y = cursorInfo.ScreenPosition.Y - captureBounds.Top - hotSpotY;
+        var hdc = graphics.GetHdc();
+
+        try
+        {
+            DrawIconEx(hdc, x, y, cursorInfo.Handle, 0, 0, 0, IntPtr.Zero, DiNormal);
+        }
+        finally
+        {
+            graphics.ReleaseHdc(hdc);
+            if (iconInfo.ColorBitmap != IntPtr.Zero)
+            {
+                DeleteObject(iconInfo.ColorBitmap);
+            }
+
+            if (iconInfo.MaskBitmap != IntPtr.Zero)
+            {
+                DeleteObject(iconInfo.MaskBitmap);
+            }
+        }
     }
 
     private static IntPtr GetCurrentModuleHandle()
@@ -2392,6 +2540,33 @@ public partial class MainWindow : Window
         public readonly int X;
 
         public readonly int Y;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct CursorInfo
+    {
+        public int Size;
+
+        public int Flags;
+
+        public IntPtr Handle;
+
+        public NativePoint ScreenPosition;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct IconInfo
+    {
+        [MarshalAs(UnmanagedType.Bool)]
+        public bool IsIcon;
+
+        public int HotspotX;
+
+        public int HotspotY;
+
+        public IntPtr MaskBitmap;
+
+        public IntPtr ColorBitmap;
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -2418,6 +2593,31 @@ public partial class MainWindow : Window
     [DllImport("user32.dll")]
     private static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam);
 
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetCursorInfo(ref CursorInfo pci);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetIconInfo(IntPtr hIcon, out IconInfo piconinfo);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool DrawIconEx(
+        IntPtr hdc,
+        int xLeft,
+        int yTop,
+        IntPtr hIcon,
+        int cxWidth,
+        int cyWidth,
+        int istepIfAniCur,
+        IntPtr hbrFlickerFreeDraw,
+        int diFlags);
+
+    [DllImport("gdi32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool DeleteObject(IntPtr hObject);
+
     [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
     private static extern IntPtr GetModuleHandle(string? lpModuleName);
 
@@ -2443,6 +2643,12 @@ public partial class MainWindow : Window
     private void SetBrush(string key, string color)
     {
         Resources[key] = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
+    }
+
+    private enum FollowAlongCaptureTiming
+    {
+        BeforeClick,
+        AfterClick
     }
 
     public sealed class EditableStep : INotifyPropertyChanged

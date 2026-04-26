@@ -88,6 +88,10 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | 2026-04-26 | Crop can be drawn in the Image workspace | Slider-only crop editing was too indirect for follow-along screenshots | Opening Crop shows the original image with a crop box; dragging on the Image workspace updates the selected step image ref non-destructively |
 | 2026-04-26 | Label text wrapping and stale image-reference warning added | Smoke testing showed labels could truncate and removed images left confusing body tokens behind | Label text supports wrapping/manual line breaks; step text names image tokens that no longer point to step images |
 | 2026-04-26 | Image captions and Follow Along delay added | Pasted images need meaningful names and some workflows update after the click | Selected images can be renamed through a caption field; Follow Along delay can be set before starting capture |
+| 2026-04-26 | Follow Along timing mode added | Some guide screenshots need the state before the click action, while menus/result screens may need after-click capture | Follow Along defaults to before-click capture and can switch to after-click capture with delay |
+| 2026-04-26 | Screenshot cursor overlay added | Follow-along screenshots need to show where the author clicked | Screenshot capture draws the visible Windows cursor into the captured bitmap when it is inside the captured monitor |
+| 2026-04-26 | ComboBox styling polished | Default Windows dropdowns looked out of place in the Material-inspired shell | Dropdowns now use local rounded styling and theme brushes |
+| 2026-04-26 | ComboBox activation fixed | The first custom dropdown template looked better but had no clickable toggle surface | Dropdowns now keep the polished style and open when clicked |
 
 ## Open Blockers
 
@@ -202,6 +206,12 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | 2026-04-26 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Label wrapping and stale image-reference warning build; Release tests passed; 36 tests passed |
 | 2026-04-26 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Stale image-reference warning now names missing tokens; Release tests passed; 36 tests passed |
 | 2026-04-26 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Image captions and Follow Along delay build; Release tests passed; 36 tests passed |
+| 2026-04-26 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Follow Along before/after click timing build; Release tests passed; 36 tests passed |
+| 2026-04-26 | App startup smoke check | Pass | Release app starts after guarding the Follow Along timing dropdown initialization event |
+| 2026-04-26 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Screenshot cursor overlay and ComboBox styling build; Release tests passed; 36 tests passed |
+| 2026-04-26 | App startup smoke check | Pass | Release app starts after screenshot cursor overlay and ComboBox styling changes |
+| 2026-04-26 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | ComboBox activation fix build; Release tests passed; 36 tests passed |
+| 2026-04-26 | App startup smoke check | Pass | Release app starts after ComboBox activation fix |
 
 ## Known Risks
 
@@ -220,7 +230,7 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | Crop editing needs richer direct manipulation | Low | Basic drag-to-crop is added; resize handles can be added later if slider fine-tuning is still too clunky |
 | Follow Along Capture needs desktop smoke testing | Medium | Win32 mouse hooks and minimization behavior must be verified manually on the target Windows machine |
 | Preview refresh needs settings | Low | Add Settings control for preview update rate/manual-only mode, then decide whether the top Preview button should be removed |
-| Follow Along timing may need more controls | Low | Delay is now configurable before capture; add hotkey/manual capture if smoke testing still misses end states |
+| Follow Along timing may need more controls | Low | Before-click capture is now the default, after-click delay remains available, and a future hotkey/manual capture can be added if smoke testing still misses end states |
 | Clipboard image names are generic | Low | A caption field now lets users rename selected images; later polish can add inline list editing if needed |
 
 ## Known M8 Bugs
