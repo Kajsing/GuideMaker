@@ -27,7 +27,7 @@ public sealed class HtmlGuideExporter
         builder.AppendLine("    .guide-annotation { position: absolute; box-sizing: border-box; z-index: 1; }");
         builder.AppendLine("    .guide-annotation-rectangle { border: 4px solid #fbbc04; background: rgba(251,188,4,.18); }");
         builder.AppendLine("    .guide-annotation-blur { border: 2px solid #202124; background: #202124; }");
-        builder.AppendLine("    .guide-annotation-label { border: 2px solid #1a73e8; background: rgba(26,115,232,.92); color: #fff; padding: 4px 8px; font: 600 14px Segoe UI, sans-serif; }");
+        builder.AppendLine("    .guide-annotation-label { border: 2px solid #1a73e8; background: rgba(26,115,232,.92); color: #fff; padding: 4px 8px; font: 600 14px Segoe UI, sans-serif; white-space: pre-wrap; overflow-wrap: anywhere; overflow: hidden; }");
         builder.AppendLine("    .guide-annotation-arrow { border-top: 4px solid #ea4335; transform: rotate(-8deg); transform-origin: left center; }");
         builder.AppendLine("    .guide-annotation-arrow::after { content: ''; position: absolute; right: -2px; top: -8px; border-left: 12px solid #ea4335; border-top: 6px solid transparent; border-bottom: 6px solid transparent; }");
         builder.AppendLine("    .guide-body-blank { height: 1rem; }");

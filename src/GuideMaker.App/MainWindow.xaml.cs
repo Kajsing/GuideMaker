@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -20,6 +21,14 @@ namespace GuideMaker.App;
 
 public partial class MainWindow : Window
 {
+    private static readonly Regex ImageRefTokenRegex = new(
+        @"\[\[image-ref:(?<id>[0-9a-fA-F-]{36})\]\]",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    private static readonly Regex ImagePathTokenRegex = new(
+        @"\[\[image:(?<path>[^\]]+)\]\]",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
     private const int WhMouseLl = 14;
     private const int WmLButtonUp = 0x0202;
     private const int WmRButtonUp = 0x0205;
@@ -1467,6 +1476,84 @@ public partial class MainWindow : Window
         StepTitleTextBox.IsEnabled = hasSelectedStep;
         StepBodyTextBox.IsEnabled = hasSelectedStep;
         DirtyIndicatorTextBlock.Text = isDirty ? "Unsaved changes" : "Saved";
+        RefreshStepBodyReferenceWarning();
+    }
+
+    private void RefreshStepBodyReferenceWarning()
+    {
+        if (GetSelectedStep() is not { } selectedStep)
+        {
+            StepBodyReferenceWarningTextBlock.Visibility = Visibility.Collapsed;
+            StepBodyReferenceWarningTextBlock.Text = string.Empty;
+            return;
+        }
+
+        var missingReferences = GetMissingStepBodyImageReferences(selectedStep);
+        if (missingReferences.Count == 0)
+        {
+            StepBodyReferenceWarningTextBlock.Visibility = Visibility.Collapsed;
+            StepBodyReferenceWarningTextBlock.Text = string.Empty;
+            return;
+        }
+
+        var visibleReferences = missingReferences.Take(3).ToArray();
+        var moreText = missingReferences.Count > visibleReferences.Length
+            ? $" (+{missingReferences.Count - visibleReferences.Length} more)"
+            : string.Empty;
+        StepBodyReferenceWarningTextBlock.Text =
+            $"Missing image reference: {string.Join(", ", visibleReferences)}{moreText}";
+        StepBodyReferenceWarningTextBlock.Visibility = Visibility.Visible;
+    }
+
+    private IReadOnlyList<string> GetMissingStepBodyImageReferences(EditableStep selectedStep)
+    {
+        if (string.IsNullOrWhiteSpace(selectedStep.Body))
+        {
+            return [];
+        }
+
+        var validImageRefIds = selectedStep.ImageRefs
+            .Select(imageRef => imageRef.Id)
+            .ToHashSet();
+        var validStepAssetPaths = selectedStep.ImageRefs
+            .Select(imageRef => currentAssets.FirstOrDefault(asset => asset.Id == imageRef.AssetId)?.RelativePath)
+            .Concat(selectedStep.AssetIds.Select(assetId => currentAssets.FirstOrDefault(asset => asset.Id == assetId)?.RelativePath))
+            .Where(path => !string.IsNullOrWhiteSpace(path))
+            .Select(path => NormalizeAssetPath(path!))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var missingReferences = new List<string>();
+        foreach (Match match in ImageRefTokenRegex.Matches(selectedStep.Body))
+        {
+            if (!Guid.TryParse(match.Groups["id"].Value, out var imageRefId) || !validImageRefIds.Contains(imageRefId))
+            {
+                missingReferences.Add(ShortenImageReferenceToken(match.Value));
+            }
+        }
+
+        foreach (Match match in ImagePathTokenRegex.Matches(selectedStep.Body))
+        {
+            if (!validStepAssetPaths.Contains(NormalizeAssetPath(match.Groups["path"].Value)))
+            {
+                missingReferences.Add(match.Value);
+            }
+        }
+
+        return missingReferences;
+    }
+
+    private static string NormalizeAssetPath(string path)
+    {
+        return path.Trim().Replace('\\', '/');
+    }
+
+    private static string ShortenImageReferenceToken(string token)
+    {
+        const int prefixLength = 13;
+        const int suffixLength = 4;
+        return token.Length <= prefixLength + 8 + suffixLength
+            ? token
+            : $"{token[..prefixLength]}...{token[^suffixLength..]}";
     }
 
     private EditableStep? GetSelectedStep()

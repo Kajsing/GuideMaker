@@ -311,6 +311,7 @@
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
 
                         <TextBox x:Name="StepTitleTextBox"
@@ -324,6 +325,12 @@
                                  VerticalContentAlignment="Top"
                                  MinHeight="180"
                                  TextChanged="StepBodyTextBox_TextChanged" />
+                        <TextBlock x:Name="StepBodyReferenceWarningTextBlock"
+                                   Grid.Row="2"
+                                   Margin="0,6,0,0"
+                                   Foreground="#D93025"
+                                   TextWrapping="Wrap"
+                                   Visibility="Collapsed" />
                     </Grid>
 
                     <DockPanel Grid.Row="4"
@@ -437,11 +444,11 @@
                                                                             Visibility="{Binding BoxVisibility}">
                                                                         <TextBlock Text="{Binding Text}"
                                                                                    Foreground="{Binding TextBrush}"
-                                                                                   FontSize="{Binding ThumbFontSize}"
-                                                                                   FontWeight="{Binding TextFontWeight}"
-                                                                                   FontStyle="{Binding TextFontStyle}"
+                                                                                  FontSize="{Binding ThumbFontSize}"
+                                                                                  FontWeight="{Binding TextFontWeight}"
+                                                                                  FontStyle="{Binding TextFontStyle}"
                                                                                    Margin="3,1"
-                                                                                   TextTrimming="CharacterEllipsis" />
+                                                                                   TextWrapping="Wrap" />
                                                                     </Border>
                                                                     <Rectangle Height="3"
                                                                                Fill="{Binding BorderBrush}"
@@ -791,6 +798,11 @@
                                 <TextBox x:Name="AnnotationTextBox"
                                          Grid.Column="1"
                                          Grid.ColumnSpan="2"
+                                         MinHeight="48"
+                                         AcceptsReturn="True"
+                                         TextWrapping="Wrap"
+                                         VerticalScrollBarVisibility="Auto"
+                                         VerticalContentAlignment="Top"
                                          TextChanged="AnnotationTextBox_TextChanged" />
 
                                 <TextBlock Grid.Row="1"
@@ -1111,7 +1123,7 @@
                                                                        FontWeight="{Binding TextFontWeight}"
                                                                        FontStyle="{Binding TextFontStyle}"
                                                                        Margin="6,3"
-                                                                       TextTrimming="CharacterEllipsis" />
+                                                                       TextWrapping="Wrap" />
                                                         </Border>
                                                         <Rectangle Height="5"
                                                                    Fill="{Binding BorderBrush}"
