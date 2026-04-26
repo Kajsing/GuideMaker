@@ -363,6 +363,21 @@
                                 MinWidth="112"
                                 Margin="0,0,8,8"
                                 Click="FollowAlongCaptureButton_Click" />
+                            <TextBlock Text="Delay"
+                                       Margin="0,0,6,8"
+                                       VerticalAlignment="Center"
+                                       Foreground="{DynamicResource MutedTextBrush}" />
+                            <ComboBox x:Name="FollowAlongDelayComboBox"
+                                      Width="92"
+                                      Height="34"
+                                      Margin="0,0,8,8"
+                                      SelectedIndex="1"
+                                      SelectionChanged="FollowAlongDelayComboBox_SelectionChanged">
+                                <ComboBoxItem Content="150 ms" Tag="150" />
+                                <ComboBoxItem Content="300 ms" Tag="300" />
+                                <ComboBoxItem Content="600 ms" Tag="600" />
+                                <ComboBoxItem Content="1000 ms" Tag="1000" />
+                            </ComboBox>
                             <Button x:Name="InsertImageReferenceButton"
                                 Content="Insert ref"
                                 MinWidth="96"
@@ -551,6 +566,26 @@
                     <StackPanel Grid.Row="6"
                                 Margin="0,14,0,0">
                     <Border Padding="12"
+                            BorderBrush="{DynamicResource BorderBrushSoft}"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Background="{DynamicResource CanvasBrush}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="96" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Caption"
+                                       VerticalAlignment="Center"
+                                       Foreground="{DynamicResource MutedTextBrush}" />
+                            <TextBox x:Name="SelectedImageCaptionTextBox"
+                                     Grid.Column="1"
+                                     TextChanged="SelectedImageCaptionTextBox_TextChanged" />
+                        </Grid>
+                    </Border>
+
+                    <Border Padding="12"
+                            Margin="0,10,0,0"
                             BorderBrush="{DynamicResource BorderBrushSoft}"
                             BorderThickness="1"
                             CornerRadius="8"

@@ -70,6 +70,7 @@ public partial class MainWindow : Window
     private bool isFollowAlongCaptureSaving;
     private bool closeAlreadyConfirmed;
     private int followAlongCaptureCount;
+    private int followAlongCaptureDelayMilliseconds = 300;
     private IntPtr followAlongMouseHookHandle = IntPtr.Zero;
     private LowLevelMouseProc? followAlongMouseProc;
     private DateTimeOffset lastFollowAlongCaptureAt = DateTimeOffset.MinValue;
@@ -381,6 +382,15 @@ public partial class MainWindow : Window
         StartFollowAlongCapture();
     }
 
+    private void FollowAlongDelayComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (FollowAlongDelayComboBox.SelectedItem is System.Windows.Controls.ComboBoxItem { Tag: string delayText } &&
+            int.TryParse(delayText, out var delayMilliseconds))
+        {
+            followAlongCaptureDelayMilliseconds = Math.Clamp(delayMilliseconds, 0, 5000);
+        }
+    }
+
     private void StartFollowAlongCapture()
     {
         if (currentProject is null || GetSelectedStep() is null)
@@ -406,7 +416,7 @@ public partial class MainWindow : Window
         lastFollowAlongCaptureAt = DateTimeOffset.MinValue;
         isFollowAlongCaptureActive = true;
         FollowAlongCaptureButton.Content = "Stop follow";
-        SetStatus("Follow along capture started. Restore GuideMaker to stop.");
+        SetStatus($"Follow along capture started. Waiting {followAlongCaptureDelayMilliseconds} ms after each click.");
         WindowState = WindowState.Minimized;
     }
 
@@ -436,9 +446,8 @@ public partial class MainWindow : Window
         {
             var hookInfo = Marshal.PtrToStructure<LowLevelMouseHookStruct>(lParam);
             var screen = Forms.Screen.FromPoint(new Drawing.Point(hookInfo.Point.X, hookInfo.Point.Y));
-            var delay = wParam == WmRButtonUp ? 250 : 140;
             Dispatcher.BeginInvoke(
-                () => CaptureFollowAlongScreenshotAsync(screen, delay),
+                () => CaptureFollowAlongScreenshotAsync(screen, followAlongCaptureDelayMilliseconds),
                 DispatcherPriority.Background);
         }
 
@@ -542,6 +551,7 @@ public partial class MainWindow : Window
         selectedAnnotationId = null;
         RefreshSelectedStepAssets();
         RefreshSelectedAssetAnnotations();
+        LoadSelectedImageCaptionIntoEditor();
         MarkDirty();
         SetStatus("Image detached from selected step.");
     }
@@ -727,6 +737,7 @@ public partial class MainWindow : Window
         RefreshSelectedStepAssets();
         RefreshSelectedAssetAnnotations();
         LoadSelectedCropIntoEditor();
+        LoadSelectedImageCaptionIntoEditor();
         UpdateUiState();
     }
 
@@ -772,6 +783,7 @@ public partial class MainWindow : Window
         RefreshWorkspaceImagePreview();
         RefreshSelectedAssetAnnotations();
         LoadSelectedCropIntoEditor();
+        LoadSelectedImageCaptionIntoEditor();
         UpdateUiState();
     }
 
@@ -785,6 +797,7 @@ public partial class MainWindow : Window
             RefreshWorkspaceImagePreview(selectedAsset);
         }
 
+        LoadSelectedImageCaptionIntoEditor();
         UpdateUiState();
     }
 
@@ -798,11 +811,13 @@ public partial class MainWindow : Window
         if (IsPoolTabActive())
         {
             RefreshWorkspaceImagePreview(ImagePoolListBox.SelectedItem as EditableAsset);
+            LoadSelectedImageCaptionIntoEditor();
             UpdateUiState();
             return;
         }
 
         RefreshWorkspaceImagePreview();
+        LoadSelectedImageCaptionIntoEditor();
         UpdateUiState();
     }
 
@@ -838,6 +853,27 @@ public partial class MainWindow : Window
         {
             Text = string.IsNullOrWhiteSpace(AnnotationTextBox.Text) ? null : AnnotationTextBox.Text
         });
+    }
+
+    private void SelectedImageCaptionTextBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+    {
+        if (isUpdatingUi || GetSelectedCaptionAssetId() is not { } assetId)
+        {
+            return;
+        }
+
+        var index = currentAssets.FindIndex(asset => asset.Id == assetId);
+        if (index < 0)
+        {
+            return;
+        }
+
+        var caption = string.IsNullOrWhiteSpace(SelectedImageCaptionTextBox.Text)
+            ? null
+            : SelectedImageCaptionTextBox.Text.Trim();
+        currentAssets[index] = currentAssets[index] with { Caption = caption };
+        MarkDirty();
+        SetStatus("Image caption updated.");
     }
 
     private void AnnotationBoundsSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -1395,9 +1431,11 @@ public partial class MainWindow : Window
         PasteImageButton.IsEnabled = isEnabled;
         CaptureScreenshotButton.IsEnabled = isEnabled;
         FollowAlongCaptureButton.IsEnabled = isEnabled;
+        FollowAlongDelayComboBox.IsEnabled = isEnabled;
         AttachPoolImageButton.IsEnabled = isEnabled;
         ScanAssetPoolButton.IsEnabled = isEnabled;
         ImagePoolListBox.IsEnabled = isEnabled;
+        SelectedImageCaptionTextBox.IsEnabled = isEnabled;
         InsertImageReferenceButton.IsEnabled = isEnabled;
         RemoveImageButton.IsEnabled = isEnabled;
         ClearCropButton.IsEnabled = isEnabled;
@@ -1448,9 +1486,11 @@ public partial class MainWindow : Window
         CaptureScreenshotButton.IsEnabled = hasProject && hasSelectedStep;
         FollowAlongCaptureButton.IsEnabled = hasProject && hasSelectedStep;
         FollowAlongCaptureButton.Content = isFollowAlongCaptureActive ? "Stop follow" : "Follow along";
+        FollowAlongDelayComboBox.IsEnabled = hasProject && !isFollowAlongCaptureActive;
         AttachPoolImageButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedPoolAsset;
         ScanAssetPoolButton.IsEnabled = hasProject;
         ImagePoolListBox.IsEnabled = hasProject;
+        SelectedImageCaptionTextBox.IsEnabled = hasProject && GetSelectedCaptionAssetId() is not null;
         InsertImageReferenceButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedStepAsset;
         RemoveImageButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedStepAsset;
         ClearCropButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedStepAsset && GetSelectedImageRef()?.Crop is not null;
@@ -1566,6 +1606,29 @@ public partial class MainWindow : Window
         return StepImagesTabControl.SelectedItem == PoolImagesTab;
     }
 
+    private Guid? GetSelectedCaptionAssetId()
+    {
+        return IsPoolTabActive()
+            ? selectedPoolAssetId
+            : selectedAssetId;
+    }
+
+    private void LoadSelectedImageCaptionIntoEditor()
+    {
+        isUpdatingUi = true;
+        if (GetSelectedCaptionAssetId() is { } assetId &&
+            currentAssets.FirstOrDefault(asset => asset.Id == assetId) is { } asset)
+        {
+            SelectedImageCaptionTextBox.Text = asset.Caption ?? Path.GetFileName(asset.RelativePath);
+        }
+        else
+        {
+            SelectedImageCaptionTextBox.Text = string.Empty;
+        }
+
+        isUpdatingUi = false;
+    }
+
     private EditableAsset? GetSelectedEditableAsset()
     {
         if (selectedImageRefId is { } imageRefId)
@@ -1594,6 +1657,7 @@ public partial class MainWindow : Window
         RefreshWorkspaceImagePreview();
         RefreshSelectedAssetAnnotations();
         LoadSelectedCropIntoEditor();
+        LoadSelectedImageCaptionIntoEditor();
         UpdateUiState();
 
         Dispatcher.BeginInvoke(() => isChangingAssetSelection = false, DispatcherPriority.ContextIdle);
@@ -1616,6 +1680,7 @@ public partial class MainWindow : Window
         RefreshImagePoolAssets(asset.Id);
         RefreshSelectedStepAssets(preferredImageRefId: imageRef.Id);
         RefreshSelectedAssetAnnotations();
+        LoadSelectedImageCaptionIntoEditor();
         MarkDirty();
     }
 

@@ -87,6 +87,7 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | 2026-04-26 | Workspace preview refresh made calmer | Larger guides were starting to lag during typing | Auto-refresh now uses a longer debounce and the workspace header has a manual Refresh button |
 | 2026-04-26 | Crop can be drawn in the Image workspace | Slider-only crop editing was too indirect for follow-along screenshots | Opening Crop shows the original image with a crop box; dragging on the Image workspace updates the selected step image ref non-destructively |
 | 2026-04-26 | Label text wrapping and stale image-reference warning added | Smoke testing showed labels could truncate and removed images left confusing body tokens behind | Label text supports wrapping/manual line breaks; step text names image tokens that no longer point to step images |
+| 2026-04-26 | Image captions and Follow Along delay added | Pasted images need meaningful names and some workflows update after the click | Selected images can be renamed through a caption field; Follow Along delay can be set before starting capture |
 
 ## Open Blockers
 
@@ -200,6 +201,7 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | 2026-04-26 | Manual smoke test | Pass | User approved direct workspace crop editing after testing the image pipeline flow |
 | 2026-04-26 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Label wrapping and stale image-reference warning build; Release tests passed; 36 tests passed |
 | 2026-04-26 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Stale image-reference warning now names missing tokens; Release tests passed; 36 tests passed |
+| 2026-04-26 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Image captions and Follow Along delay build; Release tests passed; 36 tests passed |
 
 ## Known Risks
 
@@ -218,8 +220,8 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | Crop editing needs richer direct manipulation | Low | Basic drag-to-crop is added; resize handles can be added later if slider fine-tuning is still too clunky |
 | Follow Along Capture needs desktop smoke testing | Medium | Win32 mouse hooks and minimization behavior must be verified manually on the target Windows machine |
 | Preview refresh needs settings | Low | Add Settings control for preview update rate/manual-only mode, then decide whether the top Preview button should be removed |
-| Follow Along timing may need controls | Medium | Some workflows do work after click before the useful screenshot exists; add configurable delay and/or hotkey capture if smoke testing shows missed end states |
-| Clipboard image names are generic | Low | Add an asset caption/rename flow so pasted images do not stay as `clipboard image` in guides |
+| Follow Along timing may need more controls | Low | Delay is now configurable before capture; add hotkey/manual capture if smoke testing still misses end states |
+| Clipboard image names are generic | Low | A caption field now lets users rename selected images; later polish can add inline list editing if needed |
 
 ## Known M8 Bugs
 
