@@ -92,6 +92,9 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | 2026-04-26 | Screenshot cursor overlay added | Follow-along screenshots need to show where the author clicked | Screenshot capture draws the visible Windows cursor into the captured bitmap when it is inside the captured monitor |
 | 2026-04-26 | ComboBox styling polished | Default Windows dropdowns looked out of place in the Material-inspired shell | Dropdowns now use local rounded styling and theme brushes |
 | 2026-04-26 | ComboBox activation fixed | The first custom dropdown template looked better but had no clickable toggle surface | Dropdowns now keep the polished style and open when clicked |
+| 2026-04-26 | Settings overlay added | Dark mode, preview refresh, and Follow Along capture options were starting to clutter the main workflow | A local Settings surface now owns theme, preview refresh, Follow Along timing/delay, and screenshot cursor options |
+| 2026-04-26 | Settings overlay hides guide browser while open | WPF WebBrowser uses a native window that can appear above normal WPF overlays | Opening Settings temporarily hides the guide preview browser so the settings panel is not clipped |
+| 2026-04-26 | Preview assets separated from export assets | The in-app browser can lock preview files and break later exports when they share `exports/assets` | Preview now renders under `exports/preview/` and the browser is released before preview/export writes files |
 
 ## Open Blockers
 
@@ -212,6 +215,10 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | 2026-04-26 | App startup smoke check | Pass | Release app starts after screenshot cursor overlay and ComboBox styling changes |
 | 2026-04-26 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | ComboBox activation fix build; Release tests passed; 36 tests passed |
 | 2026-04-26 | App startup smoke check | Pass | Release app starts after ComboBox activation fix |
+| 2026-04-26 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Settings overlay build; Release tests passed; 36 tests passed |
+| 2026-04-26 | App startup smoke check | Pass | Release app starts after Settings overlay changes |
+| 2026-04-26 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Settings/WebBrowser airspace fix build; Release tests passed; 36 tests passed |
+| 2026-04-26 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Preview/export asset separation build; Release tests passed; 36 tests passed |
 
 ## Known Risks
 
@@ -229,7 +236,7 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | Image workspace does not fit large images well | Medium | Crop mode now shows the original image for direct selection; future zoom/pan can improve precision for very large or ultrawide screenshots |
 | Crop editing needs richer direct manipulation | Low | Basic drag-to-crop is added; resize handles can be added later if slider fine-tuning is still too clunky |
 | Follow Along Capture needs desktop smoke testing | Medium | Win32 mouse hooks and minimization behavior must be verified manually on the target Windows machine |
-| Preview refresh needs settings | Low | Add Settings control for preview update rate/manual-only mode, then decide whether the top Preview button should be removed |
+| Preview refresh settings may need persistence | Low | Settings now controls auto-refresh and delay locally; later save these preferences outside `guide.json` if they should survive app restarts |
 | Follow Along timing may need more controls | Low | Before-click capture is now the default, after-click delay remains available, and a future hotkey/manual capture can be added if smoke testing still misses end states |
 | Clipboard image names are generic | Low | A caption field now lets users rename selected images; later polish can add inline list editing if needed |
 

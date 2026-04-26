@@ -228,10 +228,11 @@
 
                 <StackPanel Grid.Column="1"
                             Orientation="Horizontal">
-                    <ToggleButton x:Name="ThemeToggleButton"
-                                  Content="Dark"
-                                  Margin="0,0,8,0"
-                                  Click="ThemeToggleButton_Click" />
+                    <Button x:Name="SettingsButton"
+                            Content="Settings"
+                            MinWidth="96"
+                            Margin="0,0,8,0"
+                            Click="SettingsButton_Click" />
                     <Button x:Name="NewGuideButton"
                             Content="New"
                             MinWidth="92"
@@ -441,34 +442,6 @@
                                 MinWidth="112"
                                 Margin="0,0,8,8"
                                 Click="FollowAlongCaptureButton_Click" />
-                            <TextBlock Text="Timing"
-                                       Margin="0,0,6,8"
-                                       VerticalAlignment="Center"
-                                       Foreground="{DynamicResource MutedTextBrush}" />
-                            <ComboBox x:Name="FollowAlongTimingComboBox"
-                                      Width="112"
-                                      Height="34"
-                                      Margin="0,0,8,8"
-                                      SelectedIndex="0"
-                                      SelectionChanged="FollowAlongTimingComboBox_SelectionChanged">
-                                <ComboBoxItem Content="Before click" Tag="BeforeClick" />
-                                <ComboBoxItem Content="After click" Tag="AfterClick" />
-                            </ComboBox>
-                            <TextBlock Text="Delay"
-                                       Margin="0,0,6,8"
-                                       VerticalAlignment="Center"
-                                       Foreground="{DynamicResource MutedTextBrush}" />
-                            <ComboBox x:Name="FollowAlongDelayComboBox"
-                                      Width="92"
-                                      Height="34"
-                                      Margin="0,0,8,8"
-                                      SelectedIndex="1"
-                                      SelectionChanged="FollowAlongDelayComboBox_SelectionChanged">
-                                <ComboBoxItem Content="150 ms" Tag="150" />
-                                <ComboBoxItem Content="300 ms" Tag="300" />
-                                <ComboBoxItem Content="600 ms" Tag="600" />
-                                <ComboBoxItem Content="1000 ms" Tag="1000" />
-                            </ComboBox>
                             <Button x:Name="InsertImageReferenceButton"
                                 Content="Insert ref"
                                 MinWidth="96"
@@ -1286,6 +1259,114 @@
                            Text="Ready. Local-only MVP. No telemetry. No cloud."
                            Foreground="{DynamicResource MutedTextBrush}" />
             </DockPanel>
+        </Border>
+
+        <Border x:Name="SettingsOverlay"
+                Grid.RowSpan="3"
+                Background="#66000000"
+                Visibility="Collapsed">
+            <Border Width="430"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Background="{DynamicResource SurfaceBrush}"
+                    BorderBrush="{DynamicResource BorderBrushSoft}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Padding="22">
+                <StackPanel>
+                    <Grid Margin="0,0,0,16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Settings"
+                                   FontSize="18"
+                                   FontWeight="SemiBold"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource TextBrush}" />
+                        <Button Grid.Column="1"
+                                x:Name="CloseSettingsButton"
+                                Content="Close"
+                                MinWidth="72"
+                                Click="CloseSettingsButton_Click" />
+                    </Grid>
+
+                    <CheckBox x:Name="DarkModeCheckBox"
+                              Content="Dark mode"
+                              Margin="0,0,0,18"
+                              Foreground="{DynamicResource TextBrush}"
+                              Checked="DarkModeCheckBox_Changed"
+                              Unchecked="DarkModeCheckBox_Changed" />
+
+                    <TextBlock Text="Workspace preview"
+                               FontWeight="SemiBold"
+                               Margin="0,0,0,8"
+                               Foreground="{DynamicResource TextBrush}" />
+                    <CheckBox x:Name="PreviewAutoRefreshCheckBox"
+                              Content="Auto-refresh preview while editing"
+                              IsChecked="True"
+                              Margin="0,0,0,8"
+                              Foreground="{DynamicResource TextBrush}"
+                              Checked="PreviewAutoRefreshCheckBox_Changed"
+                              Unchecked="PreviewAutoRefreshCheckBox_Changed" />
+                    <StackPanel Orientation="Horizontal"
+                                Margin="0,0,0,20">
+                        <TextBlock Text="Refresh delay"
+                                   Width="120"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource MutedTextBrush}" />
+                        <ComboBox x:Name="PreviewRefreshDelayComboBox"
+                                  Width="130"
+                                  SelectedIndex="1"
+                                  SelectionChanged="PreviewRefreshDelayComboBox_SelectionChanged">
+                            <ComboBoxItem Content="800 ms" Tag="800" />
+                            <ComboBoxItem Content="1200 ms" Tag="1200" />
+                            <ComboBoxItem Content="2000 ms" Tag="2000" />
+                        </ComboBox>
+                    </StackPanel>
+
+                    <TextBlock Text="Follow along"
+                               FontWeight="SemiBold"
+                               Margin="0,0,0,8"
+                               Foreground="{DynamicResource TextBrush}" />
+                    <StackPanel Orientation="Horizontal"
+                                Margin="0,0,0,8">
+                        <TextBlock Text="Timing"
+                                   Width="120"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource MutedTextBrush}" />
+                        <ComboBox x:Name="FollowAlongTimingComboBox"
+                                  Width="150"
+                                  SelectedIndex="0"
+                                  SelectionChanged="FollowAlongTimingComboBox_SelectionChanged">
+                            <ComboBoxItem Content="Before click" Tag="BeforeClick" />
+                            <ComboBoxItem Content="After click" Tag="AfterClick" />
+                        </ComboBox>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal"
+                                Margin="0,0,0,8">
+                        <TextBlock Text="After-click delay"
+                                   Width="120"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource MutedTextBrush}" />
+                        <ComboBox x:Name="FollowAlongDelayComboBox"
+                                  Width="130"
+                                  SelectedIndex="1"
+                                  SelectionChanged="FollowAlongDelayComboBox_SelectionChanged">
+                            <ComboBoxItem Content="150 ms" Tag="150" />
+                            <ComboBoxItem Content="300 ms" Tag="300" />
+                            <ComboBoxItem Content="600 ms" Tag="600" />
+                            <ComboBoxItem Content="1000 ms" Tag="1000" />
+                        </ComboBox>
+                    </StackPanel>
+                    <CheckBox x:Name="ShowCursorInScreenshotsCheckBox"
+                              Content="Show cursor in screenshots"
+                              IsChecked="True"
+                              Foreground="{DynamicResource TextBrush}"
+                              Checked="ShowCursorInScreenshotsCheckBox_Changed"
+                              Unchecked="ShowCursorInScreenshotsCheckBox_Changed" />
+                </StackPanel>
+            </Border>
         </Border>
     </Grid>
 </Window>

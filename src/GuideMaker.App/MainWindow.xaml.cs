@@ -73,9 +73,12 @@ public partial class MainWindow : Window
     private bool isRefreshingAnnotations;
     private bool isFollowAlongCaptureActive;
     private bool isFollowAlongCaptureSaving;
+    private bool isPreviewAutoRefreshEnabled = true;
+    private bool includeCursorInScreenshots = true;
     private bool closeAlreadyConfirmed;
     private int followAlongCaptureCount;
     private int followAlongCaptureDelayMilliseconds = 300;
+    private int guidePreviewRefreshDelayMilliseconds = 1200;
     private FollowAlongCaptureTiming followAlongCaptureTiming = FollowAlongCaptureTiming.BeforeClick;
     private IntPtr followAlongMouseHookHandle = IntPtr.Zero;
     private LowLevelMouseProc? followAlongMouseProc;
@@ -94,12 +97,62 @@ public partial class MainWindow : Window
         UpdateUiState();
     }
 
-    private void ThemeToggleButton_Click(object sender, RoutedEventArgs e)
+    private void SettingsButton_Click(object sender, RoutedEventArgs e)
     {
-        isDarkMode = ThemeToggleButton.IsChecked == true;
+        SettingsOverlay.Visibility = Visibility.Visible;
+        GuidePreviewBrowser.Visibility = Visibility.Hidden;
+        SetStatus("Settings opened.");
+    }
+
+    private void CloseSettingsButton_Click(object sender, RoutedEventArgs e)
+    {
+        SettingsOverlay.Visibility = Visibility.Collapsed;
+        GuidePreviewBrowser.Visibility = Visibility.Visible;
+        SetStatus("Settings closed.");
+    }
+
+    private void DarkModeCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        isDarkMode = DarkModeCheckBox.IsChecked == true;
         ApplyTheme(isDarkMode);
-        ThemeToggleButton.Content = isDarkMode ? "Light" : "Dark";
-        SetStatus(isDarkMode ? "Dark mode enabled." : "Light mode enabled.");
+        if (IsInitialized)
+        {
+            SetStatus(isDarkMode ? "Dark mode enabled." : "Light mode enabled.");
+        }
+    }
+
+    private void PreviewAutoRefreshCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        isPreviewAutoRefreshEnabled = PreviewAutoRefreshCheckBox.IsChecked == true;
+        if (!isPreviewAutoRefreshEnabled)
+        {
+            guidePreviewRefreshTimer.Stop();
+        }
+
+        if (IsInitialized)
+        {
+            SetStatus(isPreviewAutoRefreshEnabled ? "Preview auto-refresh enabled." : "Preview auto-refresh disabled.");
+            UpdateUiState();
+        }
+    }
+
+    private void PreviewRefreshDelayComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (PreviewRefreshDelayComboBox.SelectedItem is System.Windows.Controls.ComboBoxItem { Tag: string delayText } &&
+            int.TryParse(delayText, out var delayMilliseconds))
+        {
+            guidePreviewRefreshDelayMilliseconds = Math.Clamp(delayMilliseconds, 300, 10000);
+            guidePreviewRefreshTimer.Interval = TimeSpan.FromMilliseconds(guidePreviewRefreshDelayMilliseconds);
+        }
+    }
+
+    private void ShowCursorInScreenshotsCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        includeCursorInScreenshots = ShowCursorInScreenshotsCheckBox.IsChecked == true;
+        if (IsInitialized)
+        {
+            SetStatus(includeCursorInScreenshots ? "Screenshot cursor enabled." : "Screenshot cursor disabled.");
+        }
     }
 
     private async void NewGuideButton_Click(object sender, RoutedEventArgs e)
@@ -199,6 +252,7 @@ public partial class MainWindow : Window
 
         await RunUiActionAsync(async () =>
         {
+            await ReleaseGuidePreviewBrowserAsync().ConfigureAwait(true);
             var result = await exportWriter.ExportAsync(currentProject.ProjectDirectory, BuildDocumentFromUi())
                 .ConfigureAwait(true);
             GuidePreviewBrowser.Navigate(new Uri(result.HtmlPath));
@@ -410,6 +464,9 @@ public partial class MainWindow : Window
             return;
         }
 
+        SetStatus(followAlongCaptureTiming == FollowAlongCaptureTiming.BeforeClick
+            ? "Follow along will capture before each click."
+            : "Follow along will capture after each click delay.");
         UpdateUiState();
     }
 
@@ -1306,12 +1363,15 @@ public partial class MainWindow : Window
         }
 
         var exportsDirectory = Path.Combine(currentProject.ProjectDirectory, GuideProjectLayout.ExportsDirectoryName);
-        Directory.CreateDirectory(exportsDirectory);
+        var previewDirectory = Path.Combine(exportsDirectory, "preview");
+        Directory.CreateDirectory(previewDirectory);
 
-        var previewPath = Path.Combine(exportsDirectory, "preview.html");
+        await ReleaseGuidePreviewBrowserAsync(cancellationToken).ConfigureAwait(true);
+
+        var previewPath = Path.Combine(previewDirectory, "preview.html");
         var previewDocument = previewAssetRenderer.RenderExportAssets(
             currentProject.ProjectDirectory,
-            exportsDirectory,
+            previewDirectory,
             BuildDocumentFromUi());
         await File.WriteAllTextAsync(previewPath, previewExporter.Export(previewDocument), cancellationToken)
             .ConfigureAwait(true);
@@ -1329,6 +1389,12 @@ public partial class MainWindow : Window
         {
             WorkspaceTabControl.SelectedItem = GuidePreviewTab;
         }
+    }
+
+    private async Task ReleaseGuidePreviewBrowserAsync(CancellationToken cancellationToken = default)
+    {
+        GuidePreviewBrowser.Navigate("about:blank");
+        await Task.Delay(120, cancellationToken).ConfigureAwait(true);
     }
 
     private bool ConfirmExportReview()
@@ -1469,7 +1535,13 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (!isPreviewAutoRefreshEnabled)
+        {
+            return;
+        }
+
         guidePreviewRefreshTimer.Stop();
+        guidePreviewRefreshTimer.Interval = TimeSpan.FromMilliseconds(guidePreviewRefreshDelayMilliseconds);
         guidePreviewRefreshTimer.Start();
     }
 
@@ -1519,6 +1591,7 @@ public partial class MainWindow : Window
 
     private void SetButtonsEnabled(bool isEnabled)
     {
+        SettingsButton.IsEnabled = isEnabled;
         NewGuideButton.IsEnabled = isEnabled;
         OpenGuideButton.IsEnabled = isEnabled;
         SaveGuideButton.IsEnabled = isEnabled;
@@ -1576,6 +1649,7 @@ public partial class MainWindow : Window
         var hasSelectedAnnotation = selectedAnnotationId.HasValue && GetSelectedAnnotation() is not null;
         var hasSelectedPoolAsset = selectedPoolAssetId.HasValue && currentAssets.Any(asset => asset.Id == selectedPoolAssetId.Value);
 
+        SettingsButton.IsEnabled = !isFollowAlongCaptureActive;
         SaveGuideButton.IsEnabled = hasProject;
         PreviewGuideButton.IsEnabled = hasProject;
         RefreshWorkspacePreviewButton.IsEnabled = hasProject;
@@ -1593,6 +1667,7 @@ public partial class MainWindow : Window
         FollowAlongDelayComboBox.IsEnabled = hasProject &&
             !isFollowAlongCaptureActive &&
             followAlongCaptureTiming == FollowAlongCaptureTiming.AfterClick;
+        PreviewRefreshDelayComboBox.IsEnabled = isPreviewAutoRefreshEnabled;
         AttachPoolImageButton.IsEnabled = hasProject && hasSelectedStep && hasSelectedPoolAsset;
         ScanAssetPoolButton.IsEnabled = hasProject;
         ImagePoolListBox.IsEnabled = hasProject;
@@ -2459,23 +2534,26 @@ public partial class MainWindow : Window
         return stream;
     }
 
-    private static MemoryStream CaptureVirtualScreenPng()
+    private MemoryStream CaptureVirtualScreenPng()
     {
         var bounds = Forms.SystemInformation.VirtualScreen;
-        return CaptureBoundsPng(bounds);
+        return CaptureBoundsPng(bounds, includeCursorInScreenshots);
     }
 
-    private static MemoryStream CaptureScreenPng(Forms.Screen screen)
+    private MemoryStream CaptureScreenPng(Forms.Screen screen)
     {
-        return CaptureBoundsPng(screen.Bounds);
+        return CaptureBoundsPng(screen.Bounds, includeCursorInScreenshots);
     }
 
-    private static MemoryStream CaptureBoundsPng(Drawing.Rectangle bounds)
+    private static MemoryStream CaptureBoundsPng(Drawing.Rectangle bounds, bool includeCursor)
     {
         using var bitmap = new Drawing.Bitmap(bounds.Width, bounds.Height);
         using var graphics = Drawing.Graphics.FromImage(bitmap);
         graphics.CopyFromScreen(bounds.Left, bounds.Top, 0, 0, bounds.Size);
-        DrawCursorOnScreenshot(graphics, bounds);
+        if (includeCursor)
+        {
+            DrawCursorOnScreenshot(graphics, bounds);
+        }
 
         var stream = new MemoryStream();
         bitmap.Save(stream, Drawing.Imaging.ImageFormat.Png);
