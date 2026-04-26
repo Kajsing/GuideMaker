@@ -208,3 +208,9 @@ Goal: turn the current build into an MVP candidate by smoke testing the full aut
    - Run `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1`.
    - Update `docs/status.md` with smoke-test results and remaining known limitations.
    - If the smoke test passes, mark the build as MVP candidate in `docs/status.md`.
+
+## Version 2
+
+Status: backlog started.
+
+Version 2 candidates are tracked in `docs/version-2.md`. The list should be revised after beta feedback, and MVP-blocking fixes should stay in Milestone 8 until the beta build is stable.

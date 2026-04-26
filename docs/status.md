@@ -96,6 +96,7 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | 2026-04-26 | Settings overlay hides guide browser while open | WPF WebBrowser uses a native window that can appear above normal WPF overlays | Opening Settings temporarily hides the guide preview browser so the settings panel is not clipped |
 | 2026-04-26 | Preview assets separated from export assets | The in-app browser can lock preview files and break later exports when they share `exports/assets` | Preview now renders under `exports/preview/` and the browser is released before preview/export writes files |
 | 2026-04-26 | Zip-based beta package selected | External testing needs a simple handoff before a real installer exists | `scripts/package-beta.ps1` publishes a self-contained win-x64 build and creates a zip under `artifacts/` |
+| 2026-04-26 | Version 2 backlog started | MVP needs focus while still preserving good ideas from smoke testing | Version 2 candidates now live in `docs/version-2.md` |
 
 ## Open Blockers
 
