@@ -11,6 +11,7 @@ public sealed class ExportAssetRenderer
     public const string ExportAssetsDirectoryName = "assets";
 
     private static readonly Regex ImageReferenceRegex = new(@"\[\[image:(?<path>[^\]]+)\]\]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex ImageRefReferenceRegex = new(@"\[\[image-ref:(?<id>[0-9a-fA-F-]{36})\]\]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     public GuideDocument RenderExportAssets(string projectDirectory, string exportsDirectory, GuideDocument document)
     {
@@ -340,10 +341,32 @@ public sealed class ExportAssetRenderer
             queue.Enqueue(imageRef);
         }
 
-        var renderedBody = ImageReferenceRegex.Replace(body, match =>
+        var renderedBody = ImageRefReferenceRegex.Replace(body, match =>
+        {
+            if (!Guid.TryParse(match.Groups["id"].Value, out var imageRefId) ||
+                !imageRefPathMap.TryGetValue(imageRefId, out var exportedPath))
+            {
+                return match.Value;
+            }
+
+            referencedIds.Add(imageRefId);
+            return $"[[image:{exportedPath}]]";
+        });
+
+        renderedBody = ImageReferenceRegex.Replace(renderedBody, match =>
         {
             var relativePath = NormalizeAssetPath(match.Groups["path"].Value);
             if (!imageRefsByPath.TryGetValue(relativePath, out var queue) || queue.Count == 0)
+            {
+                return match.Value;
+            }
+
+            while (queue.Count > 0 && referencedIds.Contains(queue.Peek().Id))
+            {
+                queue.Dequeue();
+            }
+
+            if (queue.Count == 0)
             {
                 return match.Value;
             }

@@ -36,7 +36,7 @@ public partial class MainWindow : Window
     private readonly ObservableCollection<EditableAnnotation> selectedAssetAnnotations = [];
     private readonly DispatcherTimer guidePreviewRefreshTimer = new()
     {
-        Interval = TimeSpan.FromMilliseconds(450)
+        Interval = TimeSpan.FromMilliseconds(1200)
     };
 
     private GuideProject? currentProject;
@@ -198,11 +198,23 @@ public partial class MainWindow : Window
 
         await RunUiActionAsync(async () =>
         {
-            var previewPath = await WritePreviewAsync().ConfigureAwait(true);
-            GuidePreviewBrowser.Navigate(new Uri(previewPath));
-            PreviewPathTextBlock.Text = previewPath;
-            WorkspaceTabControl.SelectedItem = GuidePreviewTab;
+            await RefreshGuidePreviewAsync(selectGuideTab: true).ConfigureAwait(true);
             SetStatus("Preview updated.");
+        }).ConfigureAwait(true);
+    }
+
+    private async void RefreshWorkspacePreviewButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (currentProject is null || currentMetadata is null)
+        {
+            return;
+        }
+
+        guidePreviewRefreshTimer.Stop();
+        await RunUiActionAsync(async () =>
+        {
+            await RefreshGuidePreviewAsync(selectGuideTab: false).ConfigureAwait(true);
+            SetStatus("Workspace preview refreshed.");
         }).ConfigureAwait(true);
     }
 
@@ -239,6 +251,16 @@ public partial class MainWindow : Window
 
         MarkDirty();
         SetStatus("Step deleted.");
+    }
+
+    private void MoveStepUpButton_Click(object sender, RoutedEventArgs e)
+    {
+        MoveSelectedStep(-1);
+    }
+
+    private void MoveStepDownButton_Click(object sender, RoutedEventArgs e)
+    {
+        MoveSelectedStep(1);
     }
 
     private async void ImportImageButton_Click(object sender, RoutedEventArgs e)
@@ -634,7 +656,9 @@ public partial class MainWindow : Window
             return;
         }
 
-        var token = $"[[image:{selectedAsset.RelativePath}]]";
+        var token = selectedAsset.ImageRefId is { } imageRefId
+            ? $"[[image-ref:{imageRefId}]]"
+            : $"[[image:{selectedAsset.RelativePath}]]";
         var prefix = StepBodyTextBox.CaretIndex > 0 && !StepBodyTextBox.Text[..StepBodyTextBox.CaretIndex].EndsWith(Environment.NewLine, StringComparison.Ordinal)
             ? Environment.NewLine
             : string.Empty;
@@ -1096,6 +1120,18 @@ public partial class MainWindow : Window
         return previewPath;
     }
 
+    private async Task RefreshGuidePreviewAsync(bool selectGuideTab, CancellationToken cancellationToken = default)
+    {
+        var previewPath = await WritePreviewAsync(cancellationToken).ConfigureAwait(true);
+        GuidePreviewBrowser.Navigate(new Uri(previewPath));
+        PreviewPathTextBlock.Text = previewPath;
+
+        if (selectGuideTab)
+        {
+            WorkspaceTabControl.SelectedItem = GuidePreviewTab;
+        }
+    }
+
     private bool ConfirmExportReview()
     {
         var result = WpfMessageBox.Show(
@@ -1249,9 +1285,7 @@ public partial class MainWindow : Window
 
         try
         {
-            var previewPath = await WritePreviewAsync().ConfigureAwait(true);
-            GuidePreviewBrowser.Navigate(new Uri(previewPath));
-            PreviewPathTextBlock.Text = previewPath;
+            await RefreshGuidePreviewAsync(selectGuideTab: false).ConfigureAwait(true);
         }
         catch
         {
@@ -1267,15 +1301,35 @@ public partial class MainWindow : Window
         }
     }
 
+    private void MoveSelectedStep(int direction)
+    {
+        var selectedIndex = StepsListBox.SelectedIndex;
+        var targetIndex = selectedIndex + direction;
+        if (selectedIndex < 0 || targetIndex < 0 || targetIndex >= steps.Count)
+        {
+            return;
+        }
+
+        steps.Move(selectedIndex, targetIndex);
+        RenumberSteps();
+        StepsListBox.SelectedIndex = targetIndex;
+        MarkDirty();
+        SetStatus(direction < 0 ? "Step moved up." : "Step moved down.");
+        UpdateUiState();
+    }
+
     private void SetButtonsEnabled(bool isEnabled)
     {
         NewGuideButton.IsEnabled = isEnabled;
         OpenGuideButton.IsEnabled = isEnabled;
         SaveGuideButton.IsEnabled = isEnabled;
         PreviewGuideButton.IsEnabled = isEnabled;
+        RefreshWorkspacePreviewButton.IsEnabled = isEnabled;
         ExportGuideButton.IsEnabled = isEnabled;
         AddStepButton.IsEnabled = isEnabled;
         DeleteStepButton.IsEnabled = isEnabled;
+        MoveStepUpButton.IsEnabled = isEnabled;
+        MoveStepDownButton.IsEnabled = isEnabled;
         ImportImageButton.IsEnabled = isEnabled;
         PasteImageButton.IsEnabled = isEnabled;
         CaptureScreenshotButton.IsEnabled = isEnabled;
@@ -1322,9 +1376,12 @@ public partial class MainWindow : Window
 
         SaveGuideButton.IsEnabled = hasProject;
         PreviewGuideButton.IsEnabled = hasProject;
+        RefreshWorkspacePreviewButton.IsEnabled = hasProject;
         ExportGuideButton.IsEnabled = hasProject;
         AddStepButton.IsEnabled = hasProject;
         DeleteStepButton.IsEnabled = hasProject && hasSelectedStep;
+        MoveStepUpButton.IsEnabled = hasProject && StepsListBox.SelectedIndex > 0;
+        MoveStepDownButton.IsEnabled = hasProject && StepsListBox.SelectedIndex >= 0 && StepsListBox.SelectedIndex < steps.Count - 1;
         ImportImageButton.IsEnabled = hasProject && hasSelectedStep;
         PasteImageButton.IsEnabled = hasProject && hasSelectedStep;
         CaptureScreenshotButton.IsEnabled = hasProject && hasSelectedStep;

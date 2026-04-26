@@ -329,6 +329,97 @@ public sealed class GuideExportWriterTests
     }
 
     [Fact]
+    public async Task ExportAsync_WhenBodyUsesExplicitStepImageRefTokens_RendersSelectedImageRefs()
+    {
+        var projectDirectory = Path.Combine(Path.GetTempPath(), "GuideMaker.Tests", Guid.NewGuid().ToString("N"));
+        var assetId = Guid.NewGuid();
+        var firstImageRefId = Guid.NewGuid();
+        var secondImageRefId = Guid.NewGuid();
+        var assetDirectory = Path.Combine(projectDirectory, GuideProjectLayout.AssetsDirectoryName);
+        var sourceImagePath = Path.Combine(assetDirectory, "screen.png");
+        var document = GuideDocument.Create("Duplicate ref guide", "Codex") with
+        {
+            Steps =
+            [
+                GuideStep.Create(
+                    1,
+                    "Use same screen twice",
+                    $"Second first.\n[[image-ref:{secondImageRefId}]]\nFirst second.\n[[image-ref:{firstImageRefId}]]") with
+                {
+                    ImageRefs =
+                    [
+                        new StepImageRef
+                        {
+                            Id = firstImageRefId,
+                            AssetId = assetId,
+                            Crop = new ImageCropBounds
+                            {
+                                X = 0,
+                                Y = 0,
+                                Width = 0.5,
+                                Height = 1
+                            }
+                        },
+                        new StepImageRef
+                        {
+                            Id = secondImageRefId,
+                            AssetId = assetId,
+                            Crop = new ImageCropBounds
+                            {
+                                X = 0.5,
+                                Y = 0,
+                                Width = 0.5,
+                                Height = 1
+                            }
+                        }
+                    ]
+                }
+            ],
+            Assets =
+            [
+                new GuideAsset
+                {
+                    Id = assetId,
+                    RelativePath = "assets/screen.png",
+                    Kind = GuideAssetKind.Screenshot,
+                    Caption = "Duplicate screen",
+                    CapturedAt = DateTimeOffset.UtcNow
+                }
+            ]
+        };
+
+        try
+        {
+            Directory.CreateDirectory(assetDirectory);
+            await File.WriteAllBytesAsync(
+                sourceImagePath,
+                Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAQAAAACCAYAAAB/qH1jAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAOSURBVBhXY/iPBhjQBQAeIB/hYG4BMQAAAABJRU5ErkJggg=="));
+
+            var result = await new GuideExportWriter().ExportAsync(projectDirectory, document);
+
+            var markdown = await File.ReadAllTextAsync(result.MarkdownPath);
+            var html = await File.ReadAllTextAsync(result.HtmlPath);
+
+            Assert.Contains("Second first.", markdown);
+            Assert.Contains("First second.", markdown);
+            Assert.DoesNotContain("[[image-ref:", markdown);
+            Assert.Contains("![Duplicate screen](assets/screen-2.png)", markdown);
+            Assert.Contains("![Duplicate screen](assets/screen.png)", markdown);
+            Assert.True(markdown.IndexOf("assets/screen-2.png", StringComparison.Ordinal) <
+                markdown.IndexOf("assets/screen.png", StringComparison.Ordinal));
+            Assert.Equal(1, CountOccurrences(html, "<img src=\"assets/screen-2.png\""));
+            Assert.Equal(1, CountOccurrences(html, "<img src=\"assets/screen.png\""));
+        }
+        finally
+        {
+            if (Directory.Exists(projectDirectory))
+            {
+                Directory.Delete(projectDirectory, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public async Task ExportAsync_WhenStepImageRefHasArrowAnnotation_WritesRenderedStepImageAsset()
     {
         var projectDirectory = Path.Combine(Path.GetTempPath(), "GuideMaker.Tests", Guid.NewGuid().ToString("N"));

@@ -82,6 +82,9 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | 2026-04-26 | Pool tab is not a step-editing context | Step image actions are confusing when the Pool tab has focus | Remove, Insert ref, crop, and annotation controls are disabled while Pool is active; Scan assets also reports registered images that are missing on disk |
 | 2026-04-26 | Arrow rendering made explicit | Smoke testing showed arrows looked like plain lines | App thumbnail/workspace previews and export burn-in now draw a line with a visible arrowhead |
 | 2026-04-26 | Pool images can be attached to a step more than once | The same original screenshot may need multiple crops or annotation sets in one step | Step selection now tracks the concrete `StepImageRef`, so duplicate uses can keep separate crop and annotations |
+| 2026-04-26 | Step image refs can be inserted explicitly | Duplicate pool images need a visible way to choose which use appears in text | `Insert ref` now writes `[[image-ref:<id>]]` for step image uses, and export resolves it to the correct rendered image |
+| 2026-04-26 | Steps can be reordered | Authors need to adjust guide flow without copy/paste | Step list has up/down controls that move the selected step and renumber orders |
+| 2026-04-26 | Workspace preview refresh made calmer | Larger guides were starting to lag during typing | Auto-refresh now uses a longer debounce and the workspace header has a manual Refresh button |
 
 ## Open Blockers
 
@@ -188,6 +191,9 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | 2026-04-26 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Explicit arrowhead preview/export build; Release tests passed; 35 tests passed after closing a running app process that locked build outputs |
 | 2026-04-26 | `git diff --check` | Pass | Explicit arrowhead preview/export whitespace check clean |
 | 2026-04-26 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Duplicate pool image attachment and per-ref selection build; Release tests passed; 35 tests passed |
+| 2026-04-26 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Explicit step image-ref token export build; Release tests passed; 36 tests passed |
+| 2026-04-26 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Step reorder controls build; Release tests passed; 36 tests passed |
+| 2026-04-26 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Workspace preview refresh control build; Release tests passed; 36 tests passed |
 
 ## Known Risks
 
@@ -205,6 +211,7 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | Image workspace does not fit large images well | Medium | Make the right-side Image workspace fit the available pane better before adding crop/resize handles |
 | Crop editing needs direct manipulation | Medium | Future crop mode should allow dragging a crop rectangle directly on the Workspace Image surface when Step tab and Crop are active |
 | Follow Along Capture needs desktop smoke testing | Medium | Win32 mouse hooks and minimization behavior must be verified manually on the target Windows machine |
+| Preview refresh needs settings | Low | Add Settings control for preview update rate/manual-only mode, then decide whether the top Preview button should be removed |
 
 ## Known M8 Bugs
 

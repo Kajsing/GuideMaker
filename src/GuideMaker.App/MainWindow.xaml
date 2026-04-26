@@ -204,23 +204,49 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="Steps"
                                    FontSize="16"
                                    FontWeight="SemiBold"
+                                   MinWidth="48"
                                    VerticalAlignment="Center"
-                                   Foreground="{DynamicResource TextBrush}" />
+                                   Foreground="{DynamicResource TextBrush}"
+                                   TextTrimming="CharacterEllipsis" />
                         <Button Grid.Column="1"
+                                x:Name="MoveStepUpButton"
+                                Content="▲"
+                                Width="32"
+                                Height="32"
+                                MinWidth="32"
+                                Padding="0"
+                                Margin="4,0,0,0"
+                                Click="MoveStepUpButton_Click" />
+                        <Button Grid.Column="2"
+                                x:Name="MoveStepDownButton"
+                                Content="▼"
+                                Width="32"
+                                Height="32"
+                                MinWidth="32"
+                                Padding="0"
+                                Margin="4,0,0,0"
+                                Click="MoveStepDownButton_Click" />
+                        <Button Grid.Column="3"
                                 x:Name="AddStepButton"
                                 Content="Add"
-                                MinWidth="72"
-                                Margin="8,0,0,0"
+                                Height="32"
+                                MinWidth="58"
+                                Padding="8,4"
+                                Margin="6,0,0,0"
                                 Click="AddStepButton_Click" />
-                        <Button Grid.Column="2"
+                        <Button Grid.Column="4"
                                 x:Name="DeleteStepButton"
                                 Content="Delete"
-                                MinWidth="72"
-                                Margin="8,0,0,0"
+                                Height="32"
+                                MinWidth="58"
+                                Padding="8,4"
+                                Margin="6,0,0,0"
                                 Click="DeleteStepButton_Click" />
                     </Grid>
 
@@ -986,20 +1012,33 @@
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
-                    <DockPanel Margin="0,0,0,10"
-                               LastChildFill="False">
+                    <Grid Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
                         <TextBlock Text="Workspace"
                                    FontSize="13"
                                    FontWeight="SemiBold"
                                    VerticalAlignment="Center"
                                    Foreground="{DynamicResource PrimaryBrush}" />
                         <TextBlock x:Name="PreviewPathTextBlock"
-                                   DockPanel.Dock="Right"
+                                   Grid.Column="1"
                                    Text="Not generated"
-                                   Margin="10,0,0,0"
+                                   Margin="12,0,8,0"
+                                   HorizontalAlignment="Right"
+                                   VerticalAlignment="Center"
                                    Foreground="{DynamicResource MutedTextBrush}"
                                    TextTrimming="CharacterEllipsis" />
-                    </DockPanel>
+                        <Button x:Name="RefreshWorkspacePreviewButton"
+                                Grid.Column="2"
+                                Content="Refresh"
+                                Height="30"
+                                MinWidth="72"
+                                Padding="10,4"
+                                Click="RefreshWorkspacePreviewButton_Click" />
+                    </Grid>
 
                     <TabControl x:Name="WorkspaceTabControl"
                                 Grid.Row="1">
