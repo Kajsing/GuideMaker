@@ -7,3 +7,4 @@ TestResults/
 *.suo
 *.tmp
 *.log
+artifacts/

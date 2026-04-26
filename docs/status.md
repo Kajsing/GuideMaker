@@ -95,6 +95,7 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | 2026-04-26 | Settings overlay added | Dark mode, preview refresh, and Follow Along capture options were starting to clutter the main workflow | A local Settings surface now owns theme, preview refresh, Follow Along timing/delay, and screenshot cursor options |
 | 2026-04-26 | Settings overlay hides guide browser while open | WPF WebBrowser uses a native window that can appear above normal WPF overlays | Opening Settings temporarily hides the guide preview browser so the settings panel is not clipped |
 | 2026-04-26 | Preview assets separated from export assets | The in-app browser can lock preview files and break later exports when they share `exports/assets` | Preview now renders under `exports/preview/` and the browser is released before preview/export writes files |
+| 2026-04-26 | Zip-based beta package selected | External testing needs a simple handoff before a real installer exists | `scripts/package-beta.ps1` publishes a self-contained win-x64 build and creates a zip under `artifacts/` |
 
 ## Open Blockers
 
@@ -219,6 +220,9 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | 2026-04-26 | App startup smoke check | Pass | Release app starts after Settings overlay changes |
 | 2026-04-26 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Settings/WebBrowser airspace fix build; Release tests passed; 36 tests passed |
 | 2026-04-26 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Preview/export asset separation build; Release tests passed; 36 tests passed |
+| 2026-04-26 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Beta packaging prep build; Release tests passed; 36 tests passed after closing a running app process that locked build outputs |
+| 2026-04-26 | `powershell -ExecutionPolicy Bypass -File .\scripts\package-beta.ps1` | Pass | Created `artifacts/GuideMaker-beta-20260426-1910-win-x64.zip` |
+| 2026-04-26 | Published app startup smoke check | Pass | `artifacts/GuideMaker-beta-20260426-1910-win-x64/GuideMaker.App.exe` starts |
 
 ## Known Risks
 
@@ -237,6 +241,7 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | Crop editing needs richer direct manipulation | Low | Basic drag-to-crop is added; resize handles can be added later if slider fine-tuning is still too clunky |
 | Follow Along Capture needs desktop smoke testing | Medium | Win32 mouse hooks and minimization behavior must be verified manually on the target Windows machine |
 | Preview refresh settings may need persistence | Low | Settings now controls auto-refresh and delay locally; later save these preferences outside `guide.json` if they should survive app restarts |
+| Beta packaging is not an installer | Low | Zip-based beta package is enough for first tester handoff; revisit MSIX/installer after feedback |
 | Follow Along timing may need more controls | Low | Before-click capture is now the default, after-click delay remains available, and a future hotkey/manual capture can be added if smoke testing still misses end states |
 | Clipboard image names are generic | Low | A caption field now lets users rename selected images; later polish can add inline list editing if needed |
 
