@@ -6,6 +6,9 @@ Version 2 should be shaped by beta feedback first. Items below are candidates, n
 
 ## Priority 1 - Likely After Beta
 
+- Resizable authoring layout with a larger Steps pane mode for long-form editing.
+- Detachable image windows (dock/undock) so step images can be reviewed in separate windows and gathered back into the main workspace.
+- Layout reset and simple workspace presets (for example Write, Image Review, and Default) to recover quickly after pane/window changes.
 - Real installer or MSIX packaging.
 - Persist user settings outside `guide.json`.
 - Better workspace image viewing: zoom, pan, fit-to-width, and fit-to-window.
@@ -19,6 +22,9 @@ Version 2 should be shaped by beta feedback first. Items below are candidates, n
 
 ## Priority 2 - Workflow Polish
 
+- Better step text editor with lightweight rich-text capabilities: bold, color, highlight, and fenced code block authoring.
+- Inline formatting toolbar and keyboard shortcuts for common text styles.
+- Markdown-first editing assist so formatting remains deterministic for Markdown/HTML/PDF export.
 - Rename images inline from Step/Pool lists.
 - Add image display-size controls per step image reference.
 - Add annotation style presets for common guide marks.

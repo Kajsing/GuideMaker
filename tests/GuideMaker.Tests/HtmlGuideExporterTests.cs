@@ -89,6 +89,28 @@ public sealed class HtmlGuideExporterTests
     }
 
     [Fact]
+    public void Export_RendersInlineFormattingAndCodeBlocksInBody()
+    {
+        var body = "Use **bold** and ==highlight== and [color:#1A73E8]blue[/color].\n```\nGet-Command ssh\n```";
+        var document = GuideDocument.Create("App guide", "Codex") with
+        {
+            Steps =
+            [
+                GuideStep.Create(1, "Formatting", body)
+            ]
+        };
+
+        var html = new HtmlGuideExporter().Export(document);
+
+        Assert.Contains("<strong>bold</strong>", html);
+        Assert.Contains("<mark>highlight</mark>", html);
+        Assert.Contains("<span style=\"color:#1A73E8\">blue</span>", html);
+        Assert.Contains("<pre><code>", html);
+        Assert.Contains("Get-Command ssh", html);
+        Assert.Contains("</code></pre>", html);
+    }
+
+    [Fact]
     public void Export_RendersAnnotationsAsImageOverlays()
     {
         var assetId = Guid.NewGuid();

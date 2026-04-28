@@ -5,6 +5,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
@@ -48,6 +49,7 @@ public partial class MainWindow : Window
     private readonly ObservableCollection<EditableAsset> selectedStepAssets = [];
     private readonly ObservableCollection<EditableAsset> imagePoolAssets = [];
     private readonly ObservableCollection<EditableAnnotation> selectedAssetAnnotations = [];
+    private readonly Dictionary<string, DetachedImageWindow> detachedImageWindows = [];
     private readonly DispatcherTimer guidePreviewRefreshTimer = new()
     {
         Interval = TimeSpan.FromMilliseconds(1200)
@@ -71,6 +73,7 @@ public partial class MainWindow : Window
     private bool isDraggingCrop;
     private bool isRefreshingAssets;
     private bool isRefreshingAnnotations;
+    private bool isStepsPaneWidened;
     private bool isFollowAlongCaptureActive;
     private bool isFollowAlongCaptureSaving;
     private bool isPreviewAutoRefreshEnabled = true;
@@ -83,6 +86,8 @@ public partial class MainWindow : Window
     private IntPtr followAlongMouseHookHandle = IntPtr.Zero;
     private LowLevelMouseProc? followAlongMouseProc;
     private DateTimeOffset lastFollowAlongCaptureAt = DateTimeOffset.MinValue;
+    private const double DefaultStepsPaneWidth = 320;
+    private const double WidenedStepsPaneWidth = 500;
 
     public MainWindow()
     {
@@ -333,6 +338,14 @@ public partial class MainWindow : Window
     private void MoveStepDownButton_Click(object sender, RoutedEventArgs e)
     {
         MoveSelectedStep(1);
+    }
+
+    private void ToggleStepsPaneSizeButton_Click(object sender, RoutedEventArgs e)
+    {
+        isStepsPaneWidened = !isStepsPaneWidened;
+        StepsPaneColumn.Width = new GridLength(isStepsPaneWidened ? WidenedStepsPaneWidth : DefaultStepsPaneWidth);
+        ToggleStepsPaneSizeButton.Content = isStepsPaneWidened ? "Normal" : "Widen";
+        SetStatus(isStepsPaneWidened ? "Steps pane widened." : "Steps pane restored.");
     }
 
     private async void ImportImageButton_Click(object sender, RoutedEventArgs e)
@@ -857,6 +870,70 @@ public partial class MainWindow : Window
         SetStatus("Image reference inserted into step text.");
     }
 
+    private void StepBodyBoldButton_Click(object sender, RoutedEventArgs e)
+    {
+        InsertStepBodyFormatting("**", "**", "bold text", "Bold formatting inserted.");
+    }
+
+    private void StepBodyCodeBlockButton_Click(object sender, RoutedEventArgs e)
+    {
+        InsertStepBodyFormatting(
+            $"{Environment.NewLine}```{Environment.NewLine}",
+            $"{Environment.NewLine}```{Environment.NewLine}",
+            "code",
+            "Code block inserted.");
+    }
+
+    private void StepBodyHighlightButton_Click(object sender, RoutedEventArgs e)
+    {
+        InsertStepBodyFormatting("==", "==", "highlight", "Highlight formatting inserted.");
+    }
+
+    private void StepBodyColorBlueButton_Click(object sender, RoutedEventArgs e)
+    {
+        InsertStepBodyFormatting("[color:#1A73E8]", "[/color]", "blue text", "Blue text formatting inserted.");
+    }
+
+    private void DetachImageWindowButton_Click(object sender, RoutedEventArgs e)
+    {
+        var selectedAsset = IsPoolTabActive()
+            ? ImagePoolListBox.SelectedItem as EditableAsset
+            : GetSelectedEditableAsset();
+        if (selectedAsset?.DisplayImageSource is null)
+        {
+            SetStatus("Select an image before detaching it.");
+            return;
+        }
+
+        var key = BuildDetachedImageKey(selectedAsset);
+        if (detachedImageWindows.TryGetValue(key, out var existingWindow))
+        {
+            existingWindow.Activate();
+            return;
+        }
+
+        var caption = string.IsNullOrWhiteSpace(selectedAsset.Caption)
+            ? Path.GetFileName(selectedAsset.RelativePath)
+            : selectedAsset.Caption;
+        var window = new DetachedImageWindow($"Image · {caption}", selectedAsset.DisplayImageSource);
+        window.Closed += (_, _) =>
+        {
+            detachedImageWindows.Remove(key);
+            UpdateUiState();
+        };
+
+        detachedImageWindows[key] = window;
+        window.Show();
+        UpdateUiState();
+        SetStatus("Image detached to a separate window.");
+    }
+
+    private void GatherImageWindowsButton_Click(object sender, RoutedEventArgs e)
+    {
+        CloseAllDetachedImageWindows();
+        SetStatus("All detached image windows gathered back.");
+    }
+
     private void GuideTitleTextBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
     {
         if (!isUpdatingUi && currentMetadata is not null)
@@ -1288,6 +1365,7 @@ public partial class MainWindow : Window
     private async void Window_Closing(object? sender, CancelEventArgs e)
     {
         StopFollowAlongCapture("Follow along capture stopped.");
+        CloseAllDetachedImageWindows();
 
         if (closeAlreadyConfirmed || !isDirty)
         {
@@ -1696,6 +1774,12 @@ public partial class MainWindow : Window
         GuideTitleTextBox.IsEnabled = hasProject;
         StepTitleTextBox.IsEnabled = hasSelectedStep;
         StepBodyTextBox.IsEnabled = hasSelectedStep;
+        StepBodyBoldButton.IsEnabled = hasSelectedStep;
+        StepBodyCodeBlockButton.IsEnabled = hasSelectedStep;
+        StepBodyHighlightButton.IsEnabled = hasSelectedStep;
+        StepBodyColorBlueButton.IsEnabled = hasSelectedStep;
+        DetachImageWindowButton.IsEnabled = hasProject && (hasSelectedStepAsset || (isPoolTabActive && hasSelectedPoolAsset));
+        GatherImageWindowsButton.IsEnabled = detachedImageWindows.Count > 0;
         DirtyIndicatorTextBlock.Text = isDirty ? "Unsaved changes" : "Saved";
         RefreshStepBodyReferenceWarning();
     }
@@ -1768,6 +1852,22 @@ public partial class MainWindow : Window
         return path.Trim().Replace('\\', '/');
     }
 
+    private void InsertStepBodyFormatting(string prefix, string suffix, string placeholder, string statusMessage)
+    {
+        if (GetSelectedStep() is not { } selectedStep)
+        {
+            return;
+        }
+
+        var selection = StepBodyTextBox.SelectedText;
+        var text = string.IsNullOrEmpty(selection) ? placeholder : selection;
+        StepBodyTextBox.SelectedText = prefix + text + suffix;
+        StepBodyTextBox.Focus();
+        selectedStep.Body = StepBodyTextBox.Text;
+        MarkDirty();
+        SetStatus(statusMessage);
+    }
+
     private static string ShortenImageReferenceToken(string token)
     {
         const int prefixLength = 13;
@@ -1785,6 +1885,24 @@ public partial class MainWindow : Window
     private bool IsPoolTabActive()
     {
         return StepImagesTabControl.SelectedItem == PoolImagesTab;
+    }
+
+    private static string BuildDetachedImageKey(EditableAsset asset)
+    {
+        return asset.ImageRefId is { } imageRefId
+            ? $"{asset.Id:N}:{imageRefId:N}"
+            : asset.Id.ToString("N");
+    }
+
+    private void CloseAllDetachedImageWindows()
+    {
+        foreach (var window in detachedImageWindows.Values.ToArray())
+        {
+            window.Close();
+        }
+
+        detachedImageWindows.Clear();
+        UpdateUiState();
     }
 
     private Guid? GetSelectedCaptionAssetId()
