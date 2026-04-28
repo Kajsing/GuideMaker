@@ -97,6 +97,8 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | 2026-04-26 | Preview assets separated from export assets | The in-app browser can lock preview files and break later exports when they share `exports/assets` | Preview now renders under `exports/preview/` and the browser is released before preview/export writes files |
 | 2026-04-26 | Zip-based beta package selected | External testing needs a simple handoff before a real installer exists | `scripts/package-beta.ps1` publishes a self-contained win-x64 build and creates a zip under `artifacts/` |
 | 2026-04-26 | Version 2 backlog started | MVP needs focus while still preserving good ideas from smoke testing | Version 2 candidates now live in `docs/version-2.md` |
+| 2026-04-28 | Version 2 UX backlog expanded for authoring ergonomics | Beta feedback highlighted reading/editing strain in long steps and image-heavy workflows | Backlog now includes resizable Steps layout, detachable/dockable image windows with layout reset presets, and a richer markdown-friendly step text editor (bold/color/highlight/code blocks) |
+| 2026-04-28 | Authoring workflow gained first implementation slice for backlog UX items | Beta feedback requested immediate usability gains before broader MVP hardening polish | Steps pane can be widened, selected images can be detached to separate windows and gathered back, and step text has quick formatting buttons for bold, code blocks, highlight, and color tokens rendered in HTML preview/export |
 
 ## Open Blockers
 
@@ -217,7 +219,10 @@ Status: Milestone 8 MVP hardening is in progress. The first annotation editor co
 | 2026-04-26 | App startup smoke check | Pass | Release app starts after screenshot cursor overlay and ComboBox styling changes |
 | 2026-04-26 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | ComboBox activation fix build; Release tests passed; 36 tests passed |
 | 2026-04-26 | App startup smoke check | Pass | Release app starts after ComboBox activation fix |
+| 2026-04-28 | `dotnet test GuideMaker.sln --configuration Release --no-restore` | Blocked | `.NET SDK` command not available in this environment (`dotnet: command not found`) |
+| 2026-04-28 | `git diff --check` + XML/XAML parse + sample `guide.json` parse | Pass | Docs/code formatting clean; project/XAML files parse as XML; sample guide JSON parses |
 | 2026-04-26 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Settings overlay build; Release tests passed; 36 tests passed |
+| 2026-04-28 | `git diff --check` | Pass | Backlog-only docs updates for detachable image windows, larger Steps pane mode, and richer step text editor formatting |
 | 2026-04-26 | App startup smoke check | Pass | Release app starts after Settings overlay changes |
 | 2026-04-26 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Settings/WebBrowser airspace fix build; Release tests passed; 36 tests passed |
 | 2026-04-26 | `powershell -ExecutionPolicy Bypass -File .\scripts\validate.ps1` | Pass | Preview/export asset separation build; Release tests passed; 36 tests passed |

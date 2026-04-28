@@ -8,6 +8,10 @@ namespace GuideMaker.Export;
 public sealed class HtmlGuideExporter
 {
     private static readonly Regex ImageReferenceRegex = new(@"\[\[image:(?<path>[^\]]+)\]\]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex ColorTagRegex = new(@"\[color:(?<color>#[0-9a-fA-F]{6})\](?<text>.*?)\[/color\]", RegexOptions.Compiled);
+    private static readonly Regex BoldRegex = new(@"\*\*(?<text>.+?)\*\*", RegexOptions.Compiled);
+    private static readonly Regex HighlightRegex = new(@"==(?<text>.+?)==", RegexOptions.Compiled);
+    private static readonly Regex InlineCodeRegex = new(@"`(?<text>[^`]+)`", RegexOptions.Compiled);
 
     public string Export(GuideDocument document, string assetPathPrefix = "")
     {
@@ -31,6 +35,9 @@ public sealed class HtmlGuideExporter
         builder.AppendLine("    .guide-annotation-arrow { border-top: 4px solid #ea4335; transform: rotate(-8deg); transform-origin: left center; }");
         builder.AppendLine("    .guide-annotation-arrow::after { content: ''; position: absolute; right: -2px; top: -8px; border-left: 12px solid #ea4335; border-top: 6px solid transparent; border-bottom: 6px solid transparent; }");
         builder.AppendLine("    .guide-body-blank { height: 1rem; }");
+        builder.AppendLine("    pre { background: #111; color: #f1f3f4; padding: 10px; border-radius: 6px; overflow-x: auto; }");
+        builder.AppendLine("    code { background: #f1f3f4; padding: 1px 4px; border-radius: 4px; }");
+        builder.AppendLine("    mark { background: #fff176; padding: 0 2px; }");
         builder.AppendLine("  </style>");
         builder.AppendLine("</head>");
         builder.AppendLine("<body>");
@@ -91,9 +98,23 @@ public sealed class HtmlGuideExporter
     {
         renderedAssetIds = [];
         var lines = step.Body.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
+        var inCodeBlock = false;
 
         foreach (var line in lines)
         {
+            if (string.Equals(line.Trim(), "```", StringComparison.Ordinal))
+            {
+                builder.AppendLine(inCodeBlock ? "    </code></pre>" : "    <pre><code>");
+                inCodeBlock = !inCodeBlock;
+                continue;
+            }
+
+            if (inCodeBlock)
+            {
+                builder.Append("      ").Append(WebUtility.HtmlEncode(line)).AppendLine();
+                continue;
+            }
+
             var match = ImageReferenceRegex.Match(line.Trim());
             if (match.Success && match.Value == line.Trim())
             {
@@ -115,8 +136,13 @@ public sealed class HtmlGuideExporter
             }
             else
             {
-                builder.Append("    <p>").Append(WebUtility.HtmlEncode(line)).AppendLine("</p>");
+                builder.Append("    <p>").Append(FormatInlineText(line)).AppendLine("</p>");
             }
+        }
+
+        if (inCodeBlock)
+        {
+            builder.AppendLine("    </code></pre>");
         }
     }
 
@@ -230,5 +256,16 @@ public sealed class HtmlGuideExporter
     private static string NormalizeAssetPath(string value)
     {
         return value.Trim().Replace('\\', '/');
+    }
+
+    private static string FormatInlineText(string value)
+    {
+        var encoded = WebUtility.HtmlEncode(value);
+        encoded = ColorTagRegex.Replace(encoded, match =>
+            $"<span style=\"color:{match.Groups["color"].Value}\">{match.Groups["text"].Value}</span>");
+        encoded = BoldRegex.Replace(encoded, match => $"<strong>{match.Groups["text"].Value}</strong>");
+        encoded = HighlightRegex.Replace(encoded, match => $"<mark>{match.Groups["text"].Value}</mark>");
+        encoded = InlineCodeRegex.Replace(encoded, match => $"<code>{match.Groups["text"].Value}</code>");
+        return encoded;
     }
 }
